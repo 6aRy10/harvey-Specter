@@ -336,6 +336,7 @@ function Dashboard({onBack}){
   const[legalNotes,setLegalNotes]=useState("");
   const[simplifying,setSimplifying]=useState(false);
   const[simplifyResult,setSimplifyResult]=useState(null);
+  const[pipelineDraft,setPipelineDraft]=useState(null);
   const[triageCases,setTriageCases]=useState([
     {id:"tc1",title:"BMW DPA — Data Transfer Clause",contract:"BMW_DPA_v2.pdf",type:"DPA",risk:"HIGH",deadline:"2026-04-27T09:00",assignee:"Dr. Andreas",status:"escalated",reason:"Cross-border transfer clause violates Schrems II — needs CEO sign-off before BMW deadline",hoursLeft:8},
     {id:"tc2",title:"Client NDA — Non-Compete Scope",contract:"Client_NDA_Draft.docx",type:"NDA",risk:"HIGH",deadline:"2026-04-27T14:00",assignee:"Ms. Silvia",status:"pending_review",reason:"Non-compete clause exceeds 2-year BGB limit — client meeting tomorrow at 2pm",hoursLeft:13},
@@ -366,8 +367,12 @@ function Dashboard({onBack}){
       const r=await fetch(`${API}/api/pipeline/${matterId}/simplify`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({legal_notes:legalNotes})});
       const d=await r.json();
       setSimplifyResult(d);
-      if(d.executive_slack_sent)setChatMsgs(p=>[...p,{role:"ai",text:`✅ Plain-English memo sent to Mr. Peter via Slack for matter ${matterId}.`,ts:new Date().toLocaleTimeString()}]);
-      else setChatMsgs(p=>[...p,{role:"ai",text:`⚠️ Simplified memo generated but no executive Slack configured. Add an 'Executive' webhook in Settings.`,ts:new Date().toLocaleTimeString()}]);
+      if(d.simplified){
+        setPipelineDraft({...d,matter_id:matterId});
+        setTab("draft");
+      }
+      if(d.executive_slack_sent)setChatMsgs(p=>[...p,{role:"ai",text:`✅ Executive draft generated & sent to Dr. Peter via Slack — Matter ${matterId}. View in Draft Contract tab.`,ts:new Date().toLocaleTimeString()}]);
+      else setChatMsgs(p=>[...p,{role:"ai",text:`⚠️ Draft generated — Draft Contract tab updated. Add 'Executive' webhook in Settings to also send to Dr. Peter.`,ts:new Date().toLocaleTimeString()}]);
     }catch(e){setSimplifyResult({error:e.message});}
     setSimplifying(false);
   };
@@ -378,7 +383,16 @@ function Dashboard({onBack}){
       const d=await r.json();setSlackTestMsg(d.message||d.detail||"Done");
     }catch(e){setSlackTestMsg("Error: "+e.message);}setSlackTesting(false);
   };
-  useEffect(()=>{loadCollections();loadSettings();loadTargets();},[]);
+  useEffect(()=>{
+    loadCollections();loadSettings();loadTargets();
+    const hash=window.location.hash;
+    if(hash.startsWith("#matter=")){
+      const mid=hash.replace("#matter=","");
+      fetch(`${API}/api/pipeline/${mid}/status`).then(r=>r.json()).then(d=>{
+        if(d.matter_id){setPipelineResult(d);setTab("review");setChatMsgs(p=>[...p,{role:"ai",text:`⚖️ Matter ${mid} loaded from link. Review the legal team panel and generate the executive draft.`,ts:new Date().toLocaleTimeString()}]);}
+      }).catch(()=>{});
+    }
+  },[]);
   useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:'smooth'});},[chatMsgs]);
 
   const uploadToKB=async(files)=>{setKbUploading(true);setKbResults(null);
@@ -986,18 +1000,73 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               </div>
             </div>)}
 
-            {tab==="draft"&&(<div className="card p-6 space-y-4">
-              <div><h2 className="card-header text-xl">Draft New Contract</h2><p className="text-xs text-[#999] mt-1">Describe what you need. AI picks the right template and generates a complete contract.</p></div>
-              <div className="flex flex-wrap gap-1.5">
-                {["Mutual NDA between German startup and US investor","SaaS agreement with GDPR compliance","German employment contract (Arbeitsvertrag)","Consulting agreement for AI project","GDPR Data Processing Agreement (Art. 28)"].map(s=>(
-                  <button key={s} onClick={()=>setDraftReq(s)} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
+            {tab==="draft"&&(<div className="space-y-4">
+
+              {/* Pipeline-generated executive draft */}
+              {pipelineDraft&&(<div className="card p-5 border-l-4 border-l-indigo-500 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-semibold">PIPELINE DRAFT</span>
+                      <span className="text-[10px] text-[#999] font-mono">{pipelineDraft.matter_id}</span>
+                    </div>
+                    <h2 className="font-harvey text-lg text-[#1a1a1a]">Executive Summary — Ready for Dr. Peter</h2>
+                    <p className="text-xs text-[#999] mt-0.5">Plain-English version reviewed and approved by Legal Team</p>
+                  </div>
+                  <button onClick={()=>setPipelineDraft(null)} className="text-[#ccc] hover:text-red-400 text-xs">✕ Clear</button>
+                </div>
+
+                <div className="bg-[#fafaf9] rounded-xl p-4 border border-[#e8e5e0] space-y-3">
+                  <p className="text-sm text-[#333] leading-relaxed">{pipelineDraft.simplified?.executive_summary}</p>
+                  {(pipelineDraft.simplified?.plain_risks||[]).length>0&&(
+                    <div>
+                      <p className="text-[10px] font-semibold text-[#999] uppercase mb-1.5">Key Risks (Plain Language)</p>
+                      <ul className="space-y-1">{pipelineDraft.simplified.plain_risks.map((r,i)=>(
+                        <li key={i} className="text-xs text-[#555] flex gap-1.5"><span className="text-amber-500 mt-0.5">⚠</span>{r}</li>
+                      ))}</ul>
+                    </div>
+                  )}
+                  <div className="border-t border-[#f0ede8] pt-3">
+                    <p className="text-xs font-semibold text-[#333]">What Dr. Peter needs to decide:</p>
+                    <p className="text-sm text-[#444] mt-1">{pipelineDraft.simplified?.decision_needed}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {({APPROVE:"bg-green-100 text-green-800",REJECT:"bg-red-100 text-red-800",NEGOTIATE:"bg-amber-100 text-amber-800"})[pipelineDraft.simplified?.recommendation]&&(
+                      <span className={`text-xs px-3 py-1 rounded-full font-semibold ${{APPROVE:"bg-green-100 text-green-800",REJECT:"bg-red-100 text-red-800",NEGOTIATE:"bg-amber-100 text-amber-800"}[pipelineDraft.simplified?.recommendation]}`}>
+                        Legal Recommendation: {pipelineDraft.simplified?.recommendation}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  {pipelineDraft.executive_slack_sent
+                    ?<div className="flex-1 py-2.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 border border-green-200 flex items-center justify-center gap-1.5">✅ Sent to Dr. Peter via Slack</div>
+                    :(<button onClick={()=>simplifyAndForward(pipelineDraft.matter_id)} disabled={simplifying}
+                        className="flex-1 py-2.5 rounded-lg text-xs font-semibold bg-[#4a154b] text-white hover:opacity-90 disabled:opacity-50 transition flex items-center justify-center gap-2">
+                        {simplifying?<><span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"/>Sending...</>:"📨 Send to Dr. Peter via Slack"}
+                      </button>)
+                  }
+                  <button onClick={()=>{navigator.clipboard.writeText(
+                    `Executive Summary\n\n${pipelineDraft.simplified?.executive_summary}\n\nRisks:\n${(pipelineDraft.simplified?.plain_risks||[]).map(r=>`• ${r}`).join("\n")}\n\nDecision: ${pipelineDraft.simplified?.decision_needed}\n\nRecommendation: ${pipelineDraft.simplified?.recommendation}`
+                  )}} className="px-4 py-2.5 rounded-lg text-xs font-medium border border-[#ddd8d0] text-[#555] hover:bg-[#f5f3f0] transition">Copy</button>
+                </div>
+              </div>)}
+
+              {/* Regular draft form */}
+              <div className="card p-6 space-y-4">
+                <div><h2 className="card-header text-xl">Draft New Contract</h2><p className="text-xs text-[#999] mt-1">Describe what you need. AI picks the right template and generates a complete contract.</p></div>
+                <div className="flex flex-wrap gap-1.5">
+                  {["Mutual NDA between German startup and US investor","SaaS agreement with GDPR compliance","German employment contract (Arbeitsvertrag)","Consulting agreement for AI project","GDPR Data Processing Agreement (Art. 28)"].map(s=>(
+                    <button key={s} onClick={()=>setDraftReq(s)} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
+                </div>
+                <textarea value={draftReq} onChange={e=>setDraftReq(e.target.value)} rows={8}
+                  className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Describe the contract you need in detail..."/>
+                <button onClick={()=>callAPI("/api/draft-with-approval",{requirements:draftReq})} disabled={loading||!draftReq.trim()}
+                  className="btn-primary w-full py-3 rounded-lg text-sm transition">
+                  {loading?"Generating...":"Draft & Request Partner Approval"}</button>
+                <p className="text-[10px] text-[#bbb] text-center">Draft will be sent to Slack for partner review before delivery</p>
               </div>
-              <textarea value={draftReq} onChange={e=>setDraftReq(e.target.value)} rows={8}
-                className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Describe the contract you need in detail..."/>
-              <button onClick={()=>callAPI("/api/draft-with-approval",{requirements:draftReq})} disabled={loading||!draftReq.trim()}
-                className="btn-primary w-full py-3 rounded-lg text-sm transition">
-                {loading?"Generating...":"Draft & Request Partner Approval"}</button>
-              <p className="text-[10px] text-[#bbb] text-center">Draft will be sent to Slack for partner review before delivery</p>
             </div>)}
 
             {tab==="research"&&(<div className="card p-6 space-y-4">

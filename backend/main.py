@@ -735,7 +735,7 @@ async def run_pipeline(req: PipelineRequest):
                 {"type": "section", "text": {"type": "mrkdwn", "text": f"*QA Memo (Technical):*\n{memo_text[:600]}..."}},
                 {"type": "divider"},
                 {"type": "section", "text": {"type": "mrkdwn",
-                    "text": f"✅ *Review & forward to executive:*\nCall `POST /api/pipeline/{matter_id}/simplify` to generate a plain-English executive summary and send it directly to Mr. Peter.\n\nOr use the dashboard: `GET /api/pipeline/{matter_id}/status`"}},
+                    "text": f"✅ *Your action required:*\nOpen the Harveyy dashboard, review this memo, add your notes if needed, then click *Generate Executive Draft* to create a plain-English version and send it to Dr. Peter.\n\n👉 <{frontend_url}#matter={matter_id}|Open in Harveyy Dashboard →>"}},
                 {"type": "context", "elements": [{"type": "mrkdwn", "text": f"Matter ID: `{matter_id}` | Harveyy AI | {datetime.now().strftime('%Y-%m-%d %H:%M')} UTC"}]}
             ]
         }
