@@ -800,7 +800,7 @@ async def run_pipeline(req: PipelineRequest):
                 {"role": "system", "content": "You are a QA agent. Write a concise legal memo (3-4 paragraphs) for the executive approver. Return JSON: {\"memo\":\"...\",\"recommendation\":\"APPROVE|REJECT|NEGOTIATE\",\"conditions\":[\"...\"],\"verified_by\":\"Harveyy AI QA Agent\"}"},
                 {"role": "user", "content": f"Matter: {req.matter_name}\nRisk: {json.dumps(risk)}\nGDPR issues: {json.dumps(gdpr.get('issues',[]))}\nRedlines available: {len(redlines.get('redlines',[]))}{memo_rag_block}"}
             ],
-            response_format={"type": "json_object"}, max_tokens=500, temperature=0.2
+            response_format={"type": "json_object"}, max_tokens=900, temperature=0.2
         ))
         memo = json.loads(memo_resp.choices[0].message.content)
 
