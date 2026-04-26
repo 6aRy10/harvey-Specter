@@ -127,10 +127,10 @@ async def review_contract(req: ReviewRequest):
         matter_id = f"REV-{uuid.uuid4().hex[:6].upper()}"
         audit = []
 
-        # Truncate to avoid gpt-4o-mini context window limit (~16K tokens ≈ 60K chars)
-        MAX_CHARS = 60000
+        # Truncate to keep processing fast (gpt-4o-mini works best under 15K chars)
+        MAX_CHARS = 15000
         if len(req.contract_text) > MAX_CHARS:
-            req.contract_text = req.contract_text[:MAX_CHARS] + "\n\n[... contract truncated for analysis ...]"
+            req.contract_text = req.contract_text[:MAX_CHARS] + "\n\n[... contract truncated for analysis — first 15,000 characters reviewed ...]"
 
         # Build context string from intake answers
         intake_context = ""
@@ -249,7 +249,7 @@ async def chat_with_ai(req: ChatRequest):
         msg = req.message.strip()
 
         # Truncate large contracts
-        MAX_CHARS = 60000
+        MAX_CHARS = 15000
         if req.contract_text and len(req.contract_text) > MAX_CHARS:
             req.contract_text = req.contract_text[:MAX_CHARS] + "\n\n[... contract truncated ...]"
 
