@@ -563,7 +563,7 @@ function Dashboard({onBack}){
       const r=await fetch(`${API}/api/pipeline/run`,{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contract_text:text,jurisdiction:"Germany",assignee:"Dr. Peter",matter_name:label}),signal:ctrl.signal});
       clearTimeout(t);
-      if(!r.ok)throw new Error(`Pipeline error ${r.status}`);
+      if(!r.ok){const ed=await r.json().catch(()=>({}));throw new Error(ed.detail||`Pipeline error ${r.status}`);}  
       const d=await r.json();
       setPipelineResult(d);
       setPipelineAnimStep(10);
