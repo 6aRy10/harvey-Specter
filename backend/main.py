@@ -150,8 +150,19 @@ _pipeline_store: dict = {}
 
 
 def _load_slack_targets_from_env():
-    """Reload persisted slack targets from .env on startup."""
+    """Load slack targets from OS env vars first, then .env file as fallback."""
     import re
+    # ── 1. Read from OS environment variables (works on Render/Netlify/any host) ──
+    for key, val in os.environ.items():
+        m = re.match(r'^SLACK_TARGET_(.+?)_URL$', key)
+        if m:
+            raw_name = m.group(1)
+            url = val.strip()
+            name = raw_name.replace("_", " ").title()
+            role = os.getenv(f"SLACK_TARGET_{raw_name}_ROLE", "general").strip()
+            if url:
+                _slack_targets[name] = {"url": url, "role": role}
+    # ── 2. Also read .env file (local dev fallback) ──
     env_path = Path(__file__).parent.parent / ".env"
     if not env_path.exists():
         return
@@ -160,11 +171,12 @@ def _load_slack_targets_from_env():
         if m:
             raw_name, url = m.group(1), m.group(2).strip()
             name = raw_name.replace("_", " ").title()
-            role_line = next(
-                (l for l in env_path.read_text(encoding="utf-8").splitlines()
-                 if l.startswith(f"SLACK_TARGET_{raw_name}_ROLE=")), None)
-            role = role_line.split("=", 1)[1].strip() if role_line else "general"
-            _slack_targets[name] = {"url": url, "role": role}
+            if name not in _slack_targets:  # don't overwrite OS env vars
+                role_line = next(
+                    (l for l in env_path.read_text(encoding="utf-8").splitlines()
+                     if l.startswith(f"SLACK_TARGET_{raw_name}_ROLE=")), None)
+                role = role_line.split("=", 1)[1].strip() if role_line else "general"
+                _slack_targets[name] = {"url": url, "role": role}
 
 
 _load_slack_targets_from_env()
