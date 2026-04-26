@@ -201,10 +201,22 @@ async def review_contract(req: ReviewRequest):
         review = await orchestrator.review_contract_only(req.contract_text, req.jurisdiction, review_context if review_context else None)
         audit.append({"agent": "contract_review", "action": "review_complete", "details": f"Risk: {review.get('overall_risk_score', 'N/A')}"})
 
-        # Step 2: Auto-research — skipped for speed (results in <10s)
+        # Step 2: RAG search — runs in parallel with review result processing
         flagged = review.get("clauses_found", [])
+        contract_type = review.get("contract_type", "contract")
+        rag_insights = []
+        async def run_rag_search():
+            try:
+                from data_pipeline.vector_store import search_vector_store
+                query = f"{contract_type} {' '.join([c.get('clause_type','') for c in flagged[:3]])}"
+                results = search_vector_store(query, "legal_knowledge", 4)
+                return results or []
+            except Exception:
+                return []
+        rag_task = asyncio.create_task(run_rag_search())
+
         research_results = []
-        if False and flagged:  # disabled for fast mode
+        if False and flagged:  # auto-research disabled for fast mode
             top_issues = flagged[:3]
             focus = f" The client's goal is: {req.context.get('goal', 'full review')}." if req.context and req.context.get("goal") else ""
 
@@ -240,12 +252,15 @@ async def review_contract(req: ReviewRequest):
             suggested_actions.append({"action": "compliance_check", "priority": "medium", "reason": "GDPR implications detected — run full compliance audit."})
         suggested_actions.append({"action": "negotiate", "priority": "low", "reason": "Generate a redline version with suggested amendments for counterparty."})
 
+        rag_insights = await rag_task
+
         return {
             "id": matter_id,
             "status": "complete",
             "agent": "contract_review",
             "agent_results": {"contract_review": review},
             "auto_research": research_results,
+            "rag_insights": rag_insights,
             "suggested_actions": suggested_actions,
             "intake_brief": req.context if req.context else None,
             "audit_trail": audit,
