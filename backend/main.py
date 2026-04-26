@@ -125,12 +125,11 @@ async def get_settings():
 
 @app.post("/api/settings/slack-webhook")
 async def set_slack_webhook(req: SlackSettingsRequest):
-    """Set Slack webhook URL at runtime (session only — also write to .env)."""
+    """Set primary Slack webhook URL at runtime."""
     url = req.webhook_url.strip()
     if not url.startswith("https://hooks.slack.com/"):
         raise HTTPException(status_code=400, detail="Must be a valid Slack webhook URL (https://hooks.slack.com/...)")
     os.environ["SLACK_WEBHOOK_URL"] = url
-    # Persist to .env file for future restarts
     env_path = Path(__file__).parent.parent / ".env"
     try:
         lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
@@ -138,8 +137,86 @@ async def set_slack_webhook(req: SlackSettingsRequest):
         new_lines.append(f"SLACK_WEBHOOK_URL={url}")
         env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
     except Exception:
-        pass  # Runtime set still works even if file write fails
-    return {"status": "ok", "slack_configured": True, "message": "Slack webhook saved. Pipeline will now send real notifications."}
+        pass
+    return {"status": "ok", "slack_configured": True, "message": "Slack webhook saved."}
+
+
+# In-memory multi-target store  { name: webhook_url }
+_slack_targets: dict = {}
+
+
+class SlackTargetRequest(BaseModel):
+    name: str
+    webhook_url: str
+
+
+@app.get("/api/settings/slack-targets")
+async def list_slack_targets():
+    """List all named Slack webhook targets."""
+    targets = [
+        {"name": k, "webhook_preview": v[:40] + "..." if len(v) > 40 else v}
+        for k, v in _slack_targets.items()
+    ]
+    # Also include primary if set
+    primary = os.getenv("SLACK_WEBHOOK_URL", "")
+    if primary and "Primary" not in _slack_targets:
+        targets = [{"name": "Primary", "webhook_preview": primary[:40] + "..."}] + targets
+    return {"targets": targets}
+
+
+@app.post("/api/settings/slack-targets")
+async def add_slack_target(req: SlackTargetRequest):
+    """Add a named Slack webhook target (e.g. Dr. Peter → webhook URL)."""
+    url = req.webhook_url.strip()
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not url.startswith("https://hooks.slack.com/"):
+        raise HTTPException(status_code=400, detail="Must be a valid Slack webhook URL")
+    _slack_targets[name] = url
+    # Set as primary if first one
+    if not os.getenv("SLACK_WEBHOOK_URL"):
+        os.environ["SLACK_WEBHOOK_URL"] = url
+    # Persist to env
+    env_path = Path(__file__).parent.parent / ".env"
+    try:
+        lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+        key = f"SLACK_WEBHOOK_{name.upper().replace(' ', '_')}"
+        new_lines = [l for l in lines if not l.startswith(f"{key}=")]
+        new_lines.append(f"{key}={url}")
+        env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    except Exception:
+        pass
+    return {"status": "ok", "name": name, "targets_count": len(_slack_targets)}
+
+
+@app.delete("/api/settings/slack-targets/{name}")
+async def remove_slack_target(name: str):
+    """Remove a named Slack target."""
+    if name in _slack_targets:
+        del _slack_targets[name]
+    return {"status": "ok", "removed": name}
+
+
+class SlackTestRequest(BaseModel):
+    webhook_url: str
+
+
+@app.post("/api/settings/slack-test")
+async def test_slack_webhook(req: SlackTestRequest):
+    """Send a test message to verify a webhook works."""
+    import requests as req_lib
+    url = req.webhook_url.strip()
+    if not url.startswith("https://hooks.slack.com/"):
+        raise HTTPException(status_code=400, detail="Invalid Slack webhook URL")
+    try:
+        resp = req_lib.post(url, json={"text": "✅ Harveyy AI — Slack integration test successful! Pipeline notifications are now active."}, timeout=8)
+        if resp.status_code == 200:
+            return {"status": "ok", "message": "Test message sent successfully!"}
+        else:
+            raise HTTPException(status_code=400, detail=f"Slack returned {resp.status_code}: {resp.text}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/extract-pdf")
