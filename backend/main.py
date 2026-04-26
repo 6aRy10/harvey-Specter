@@ -105,6 +105,43 @@ async def list_matters():
     return orchestrator.list_matters()
 
 
+# ─── Settings ───
+class SlackSettingsRequest(BaseModel):
+    webhook_url: str
+
+
+@app.get("/api/settings")
+async def get_settings():
+    """Return current runtime configuration status."""
+    from backend.integrations.slack_approval import is_configured, get_webhook_url
+    wh = get_webhook_url() or ""
+    masked = (wh[:30] + "...") if len(wh) > 30 else wh
+    return {
+        "slack_configured": is_configured(),
+        "slack_webhook_preview": masked if wh else "",
+        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
+    }
+
+
+@app.post("/api/settings/slack-webhook")
+async def set_slack_webhook(req: SlackSettingsRequest):
+    """Set Slack webhook URL at runtime (session only — also write to .env)."""
+    url = req.webhook_url.strip()
+    if not url.startswith("https://hooks.slack.com/"):
+        raise HTTPException(status_code=400, detail="Must be a valid Slack webhook URL (https://hooks.slack.com/...)")
+    os.environ["SLACK_WEBHOOK_URL"] = url
+    # Persist to .env file for future restarts
+    env_path = Path(__file__).parent.parent / ".env"
+    try:
+        lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+        new_lines = [l for l in lines if not l.startswith("SLACK_WEBHOOK_URL=")]
+        new_lines.append(f"SLACK_WEBHOOK_URL={url}")
+        env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    except Exception:
+        pass  # Runtime set still works even if file write fails
+    return {"status": "ok", "slack_configured": True, "message": "Slack webhook saved. Pipeline will now send real notifications."}
+
+
 @app.post("/api/extract-pdf")
 async def extract_pdf(file: UploadFile = File(...)):
     """Extract text from PDF — text-based via pypdf, scanned via OpenAI Vision OCR."""
