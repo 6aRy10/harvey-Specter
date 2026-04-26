@@ -360,20 +360,21 @@ state and federal courts located in Wilmington, Delaware.`);};
 
   const handleFile=async(e)=>{
     const f=e.target.files[0];if(!f)return;
-    if((f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf"))&&window.pdfjsLib){
+    if(f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf")){
+      setChatMsgs(p=>[...p,{role:"ai",text:`Reading "${f.name}"...`,ts:new Date().toLocaleTimeString(),loading:true}]);
       try{
-        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const arrayBuf=await f.arrayBuffer();
-        const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
-        let text="";
-        for(let i=1;i<=pdf.numPages;i++){
-          const page=await pdf.getPage(i);
-          const content=await page.getTextContent();
-          text+=content.items.map(s=>s.str).join(" ")+"\n";
+        const form=new FormData();form.append("file",f);
+        const r=await fetch(`${API}/api/extract-pdf`,{method:"POST",body:form});
+        const d=await r.json();
+        setChatMsgs(p=>p.filter(m=>!m.loading));
+        if(d.error==="scanned_pdf"){
+          setChatMsgs(p=>[...p,{role:"ai",text:`⚠️ "${f.name}" is a scanned/image PDF — text can't be extracted automatically. Please export it as .txt or copy-paste the contract text into a .txt file and upload that instead.`,ts:new Date().toLocaleTimeString()}]);
+        } else if(d.text){
+          setContractText(d.text);
+          setChatMsgs(p=>[...p,{role:"ai",text:`✅ Extracted ${d.pages} pages (${d.chars.toLocaleString()} chars) from "${f.name}". Ready to review.`,ts:new Date().toLocaleTimeString()}]);
         }
-        setContractText(text.trim()||"[PDF extracted but no text found — try a text-based PDF]");
       }catch(err){
-        setChatMsgs(p=>[...p,{role:"ai",text:"PDF parse error: "+err.message+". Try saving as .txt instead.",ts:new Date().toLocaleTimeString()}]);
+        setChatMsgs(p=>[...p.filter(m=>!m.loading),{role:"ai",text:"Upload error: "+err.message,ts:new Date().toLocaleTimeString()}]);
       }
     } else {
       const r=new FileReader();r.onload=ev=>setContractText(ev.target.result);r.readAsText(f);

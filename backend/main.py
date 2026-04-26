@@ -105,6 +105,26 @@ async def list_matters():
     return orchestrator.list_matters()
 
 
+@app.post("/api/extract-pdf")
+async def extract_pdf(file: UploadFile = File(...)):
+    """Extract text from an uploaded PDF using pypdf."""
+    try:
+        import io
+        from pypdf import PdfReader
+        contents = await file.read()
+        reader = PdfReader(io.BytesIO(contents))
+        text = ""
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            text += page_text + "\n"
+        text = text.strip()
+        if len(text) < 100:
+            return {"text": "", "error": "scanned_pdf", "message": "This appears to be a scanned/image PDF. Please convert to text format first."}
+        return {"text": text, "pages": len(reader.pages), "chars": len(text)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/matters/{matter_id}")
 async def get_matter(matter_id: str):
     """Get a specific matter by ID."""
