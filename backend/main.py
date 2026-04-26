@@ -782,14 +782,14 @@ async def run_pipeline(req: PipelineRequest):
         # ── STEP 7: QA Memo ───────────────────────────────────────────
         log_step(7, "qa_agent", "generating_memo")
         memo_rag_block = f"\n\nFirm policy standards to reference:\n{rag_memo}" if rag_memo else ""
-        memo_resp = openai_client.chat.completions.create(
+        memo_resp = await loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a QA agent. Write a concise legal memo (3-4 paragraphs) for the executive approver. Return JSON: {\"memo\":\"...\",\"recommendation\":\"APPROVE|REJECT|NEGOTIATE\",\"conditions\":[\"...\"],\"verified_by\":\"Harveyy AI QA Agent\"}"},
                 {"role": "user", "content": f"Matter: {req.matter_name}\nRisk: {json.dumps(risk)}\nGDPR issues: {json.dumps(gdpr.get('issues',[]))}\nRedlines available: {len(redlines.get('redlines',[]))}{memo_rag_block}"}
             ],
             response_format={"type": "json_object"}, max_tokens=500, temperature=0.2
-        )
+        ))
         memo = json.loads(memo_resp.choices[0].message.content)
 
         # ── LDA clause check on top HIGH-risk clause (if configured) ──
