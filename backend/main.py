@@ -887,25 +887,59 @@ async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRe
     legal_notes = req.legal_notes.strip()
 
     correction_block = f"\n\nLegal team corrections/notes:\n{legal_notes}" if legal_notes else ""
+    original_risk_score = risk.get("risk_score", 10)
+    original_risk_level = risk.get("risk_level", "HIGH")
 
-    # Rewrite in plain English for non-lawyer executive
+    # ── Step A: Re-score risk AFTER applying redlines + legal notes ────────────
+    redline_list = redlines.get("redlines", [])
+    rescore_resp = openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": (
+                "You are a senior legal risk analyst. A contract had an initial risk score. "
+                "The legal team has now proposed redlines and corrections. "
+                "Re-assess the RESIDUAL risk after these redlines are applied. "
+                "A well-negotiated contract with all redlines accepted should score 0-3/10. "
+                "Return JSON: {\"post_legal_risk_score\": 0-10, \"post_legal_risk_level\": \"HIGH|MEDIUM|LOW\", "
+                "\"residual_risks\": [\"...\"], \"risk_reduction_summary\": \"...\"}"
+            )},
+            {"role": "user", "content": (
+                f"Original risk score: {original_risk_score}/10 ({original_risk_level})\n"
+                f"Original risk factors: {risk.get('top_risks', [])}\n\n"
+                f"Proposed redlines ({len(redline_list)} total):\n"
+                + "\n".join(f"- {r.get('clause','')}: {r.get('proposed_redline','')[:150]}" for r in redline_list[:5])
+                + f"\n\nGDPR issues resolved: {len(data.get('gdpr',{}).get('issues',[]))}"
+                + (f"\n\nLegal team notes: {legal_notes}" if legal_notes else "")
+            )}
+        ],
+        response_format={"type": "json_object"}, max_tokens=300, temperature=0.1
+    )
+    rescore = json.loads(rescore_resp.choices[0].message.content)
+    post_risk_score = rescore.get("post_legal_risk_score", original_risk_score)
+    post_risk_level = rescore.get("post_legal_risk_level", original_risk_level)
+    risk_reduction_summary = rescore.get("risk_reduction_summary", "")
+    residual_risks = rescore.get("residual_risks", [])
+
+    # ── Step B: Plain-English summary for CEO ─────────────────────────────────
     simplify_resp = openai_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": (
                 "You are a senior legal officer translating a technical legal memo into plain English "
                 "for a non-lawyer executive (Mr. Peter). Use simple language, no legal jargon. "
-                "Structure it as: 1) What this contract is about (2 sentences), "
-                "2) The main risks in plain language, 3) What the legal team recommends and why, "
-                "4) What Mr. Peter needs to decide (Approve / Reject / Negotiate). "
+                "The legal team has already negotiated the contract and reduced the risk. "
+                "Reflect the POST-negotiation risk level in your summary. "
                 "Return JSON: {\"executive_summary\":\"...\",\"plain_risks\":[\"...\"],"
                 "\"recommendation\":\"APPROVE|REJECT|NEGOTIATE\",\"decision_needed\":\"...\"}"
             )},
             {"role": "user", "content": (
                 f"Technical memo:\n{memo_text}\n\n"
-                f"Risk level: {risk.get('risk_level','?')}, Score: {risk.get('risk_score','?')}/10\n"
+                f"ORIGINAL risk: {original_risk_score}/10 ({original_risk_level})\n"
+                f"POST-NEGOTIATION risk: {post_risk_score}/10 ({post_risk_level})\n"
+                f"Risk reduction: {risk_reduction_summary}\n"
+                f"Remaining concerns: {residual_risks}\n"
                 f"GDPR score: {gdpr.get('gdpr_score','?')}/10\n"
-                f"Redlines proposed: {len(redlines.get('redlines',[]))}\n"
+                f"Redlines applied: {len(redline_list)}\n"
                 f"{correction_block}"
             )}
         ],
@@ -919,9 +953,9 @@ async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRe
     plain_risks = simplified.get("plain_risks", [])
     decision = simplified.get("decision_needed", "")
     recommendation = simplified.get("recommendation", "?")
-
     rec_emoji = {"APPROVE": "✅", "REJECT": "❌", "NEGOTIATE": "⚠️"}.get(recommendation, "❓")
 
+    risk_delta_text = f"~{original_risk_score}/10~ → *{post_risk_score}/10* after legal review"
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5500")
     approve_url = f"{frontend_url}#approve={matter_id}"
     exec_msg = {
@@ -930,7 +964,9 @@ async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRe
             {"type": "section", "text": {"type": "mrkdwn", "text": f"*Hi Dr. Peter,*\n\n{exec_summary}"}},
             {"type": "divider"},
             {"type": "section", "text": {"type": "mrkdwn",
-                "text": "*Key risks (in plain language):*\n" + "\n".join(f"• {r}" for r in plain_risks[:4])}},
+                "text": f"*Risk after legal review:* {risk_delta_text}\n_{risk_reduction_summary}_"}},
+            {"type": "section", "text": {"type": "mrkdwn",
+                "text": "*Remaining concerns:*\n" + "\n".join(f"• {r}" for r in (plain_risks or residual_risks)[:3])}},
             {"type": "divider"},
             {"type": "section", "text": {"type": "mrkdwn",
                 "text": f"*Legal team recommends:* {rec_emoji} *{recommendation}*\n\n*Your decision:* {decision}"}},
@@ -946,6 +982,11 @@ async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRe
 
     # Update stored pipeline data
     _pipeline_store[matter_id]["simplified_memo"] = simplified
+    _pipeline_store[matter_id]["post_legal_risk"] = {
+        "score": post_risk_score, "level": post_risk_level,
+        "residual_risks": residual_risks, "reduction_summary": risk_reduction_summary,
+        "original_score": original_risk_score, "original_level": original_risk_level,
+    }
     _pipeline_store[matter_id]["status"] = "awaiting_executive_approval"
     _pipeline_store[matter_id]["executive_slack_sent"] = exec_sent
     if legal_notes:
@@ -955,8 +996,9 @@ async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRe
         "matter_id": matter_id,
         "status": "awaiting_executive_approval",
         "simplified": simplified,
+        "post_legal_risk": _pipeline_store[matter_id]["post_legal_risk"],
         "executive_slack_sent": exec_sent,
-        "message": f"Plain-English summary sent to Mr. Peter {'successfully' if exec_sent else '(no executive webhook configured)'}"
+        "message": f"Post-legal risk: {post_risk_score}/10. Plain-English summary sent to Dr. Peter {'successfully' if exec_sent else '(no executive webhook configured)'}"
     }
 
 

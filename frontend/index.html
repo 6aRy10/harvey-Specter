@@ -861,9 +861,14 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
     const risks=approveData.plain_risks||sm.plain_risks||[];
     const summary=approveData.executive_summary||sm.executive_summary||approveData.memo?.memo?.substring(0,500)||"";
     const decisionNeeded=approveData.decision_needed||sm.decision_needed||"Review and decide";
-    const riskScore=approveData.risk?.risk_score||0;
-    const riskLevel=approveData.risk?.risk_level||"MEDIUM";
-    const topRisks=approveData.risk?.top_risks||[];
+    const plr=approveData.post_legal_risk||null;
+    const riskScore=plr?plr.score:(approveData.risk?.risk_score||0);
+    const riskLevel=plr?plr.level:(approveData.risk?.risk_level||"MEDIUM");
+    const originalScore=plr?plr.original_score:(approveData.risk?.risk_score||0);
+    const originalLevel=plr?plr.original_level:(approveData.risk?.risk_level||"MEDIUM");
+    const legalReviewed=!!plr;
+    const reductionSummary=plr?.reduction_summary||"";
+    const topRisks=plr?.residual_risks||approveData.risk?.top_risks||[];
     const intake=approveData.intake||{};
     const clauses=(approveData.clauses?.clauses||[]).slice(0,5);
     const redlines=(approveData.redlines?.redlines||[]).slice(0,3);
@@ -904,14 +909,47 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
             <p className="text-xs font-semibold uppercase tracking-widest text-[#999] mb-1">Action Required</p>
             <h1 className="font-harvey text-2xl text-[#1a1a1a] leading-snug mb-2">{matterName}</h1>
             <p className="text-sm text-[#555] mb-4">{parties} · {intake.contract_type||"Contract"} · {intake.jurisdiction||"International"}</p>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="flex-1 bg-white/60 rounded-full h-2.5 overflow-hidden">
-                <div className={`h-full rounded-full ${rc.bar} transition-all`} style={{width:`${Math.round(riskScore*10)}%`}}/>
+            {/* Risk bar — post-legal if available */}
+            {legalReviewed?(
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-white/40 rounded-full h-2 overflow-hidden">
+                    <div className="h-full rounded-full bg-gray-400 opacity-40" style={{width:`${Math.round(originalScore*10)}%`}}/>
+                  </div>
+                  <span className="text-xs text-[#999] line-through w-14 text-right">{originalScore}/10</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-white/60 rounded-full h-3 overflow-hidden">
+                    <div className={`h-full rounded-full ${rc.bar} transition-all`} style={{width:`${Math.round(riskScore*10)}%`}}/>
+                  </div>
+                  <span className={`text-sm font-bold ${rc.text} w-14 text-right`}>{riskScore}/10</span>
+                </div>
+                <p className={`text-xs font-semibold ${rc.text}`}>{rc.label}</p>
+                {reductionSummary&&<p className="text-xs text-[#666] italic mt-1">✓ {reductionSummary}</p>}
               </div>
-              <span className={`text-sm font-bold ${rc.text}`}>{riskScore}/10 risk</span>
-            </div>
-            <p className={`text-xs font-medium ${rc.text}`}>{rc.label}</p>
+            ):(
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="flex-1 bg-white/60 rounded-full h-2.5 overflow-hidden">
+                    <div className={`h-full rounded-full ${rc.bar}`} style={{width:`${Math.round(riskScore*10)}%`}}/>
+                  </div>
+                  <span className={`text-sm font-bold ${rc.text}`}>{riskScore}/10 risk</span>
+                </div>
+                <p className={`text-xs font-medium ${rc.text}`}>{rc.label}</p>
+              </div>
+            )}
           </div>
+
+          {/* Legal review not yet done — block */}
+          {!legalReviewed&&(
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 flex gap-4 items-start">
+              <span className="text-2xl flex-shrink-0">⏳</span>
+              <div>
+                <p className="text-base font-bold text-amber-800">Legal team hasn’t reviewed this yet</p>
+                <p className="text-sm text-amber-700 mt-1">This contract has a raw risk score of <b>{riskScore}/10</b>. The legal team must negotiate and reduce it to <b>≤3/10</b> before you can approve. You’ll receive a new Slack message once it’s ready.</p>
+              </div>
+            </div>
+          )}
 
           {/* Plain English Summary */}
           <div className="bg-white rounded-2xl p-6 border border-[#e8e5e0] shadow-sm space-y-3">
@@ -1017,9 +1055,10 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               className="w-full rounded-xl p-4 text-sm resize-none border border-[#e8e5e0] focus:border-[#999] focus:outline-none"
               placeholder="Optional note to the legal team — e.g. 'Approve but negotiate liability cap down to €500k'"/>
             <div className="grid grid-cols-3 gap-3">
-              <button onClick={()=>doApproval("approve")} disabled={approveLoading}
-                className="py-4 rounded-xl text-sm font-bold bg-green-600 hover:bg-green-700 text-white transition flex flex-col items-center gap-1">
-                <span className="text-xl">✅</span>Approve
+              <button onClick={()=>doApproval("approve")} disabled={approveLoading||(!legalReviewed||riskScore>3)}
+                title={!legalReviewed?"Awaiting legal review":riskScore>3?`Risk must be ≤3/10 before approval (currently ${riskScore}/10)`:""}
+                className={`py-4 rounded-xl text-sm font-bold text-white transition flex flex-col items-center gap-1 ${(!legalReviewed||riskScore>3)?"bg-gray-300 cursor-not-allowed":"bg-green-600 hover:bg-green-700"}`}>
+                <span className="text-xl">✅</span>{(!legalReviewed||riskScore>3)?`Locked (${riskScore}/10)`:`Approve`}
               </button>
               <button onClick={()=>doApproval("negotiate")} disabled={approveLoading}
                 className="py-4 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-600 text-white transition flex flex-col items-center gap-1">
