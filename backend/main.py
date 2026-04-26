@@ -149,6 +149,27 @@ _slack_targets: dict = {}
 _pipeline_store: dict = {}
 
 
+def _load_slack_targets_from_env():
+    """Reload persisted slack targets from .env on startup."""
+    import re
+    env_path = Path(__file__).parent.parent / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        m = re.match(r'^SLACK_TARGET_(.+?)_URL=(.+)$', line.strip())
+        if m:
+            raw_name, url = m.group(1), m.group(2).strip()
+            name = raw_name.replace("_", " ").title()
+            role_line = next(
+                (l for l in env_path.read_text(encoding="utf-8").splitlines()
+                 if l.startswith(f"SLACK_TARGET_{raw_name}_ROLE=")), None)
+            role = role_line.split("=", 1)[1].strip() if role_line else "general"
+            _slack_targets[name] = {"url": url, "role": role}
+
+
+_load_slack_targets_from_env()
+
+
 class SlackTargetRequest(BaseModel):
     name: str
     webhook_url: str
@@ -183,10 +204,13 @@ async def add_slack_target(req: SlackTargetRequest):
         os.environ["SLACK_WEBHOOK_URL"] = url
     env_path = Path(__file__).parent.parent / ".env"
     try:
+        raw_key = name.upper().replace(" ", "_")
+        url_key = f"SLACK_TARGET_{raw_key}_URL"
+        role_key = f"SLACK_TARGET_{raw_key}_ROLE"
         lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
-        key = f"SLACK_WEBHOOK_{name.upper().replace(' ', '_')}"
-        new_lines = [l for l in lines if not l.startswith(f"{key}=")]
-        new_lines.append(f"{key}={url}")
+        new_lines = [l for l in lines if not l.startswith(f"{url_key}=") and not l.startswith(f"{role_key}=")]
+        new_lines.append(f"{url_key}={url}")
+        new_lines.append(f"{role_key}={role}")
         env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
     except Exception:
         pass
