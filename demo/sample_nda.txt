@@ -1,0 +1,80 @@
+NON-DISCLOSURE AGREEMENT
+
+This Non-Disclosure Agreement ("Agreement") is entered into as of January 15, 2026 
+(the "Effective Date") by and between:
+
+TechCorp GmbH, a German limited liability company with its registered office at 
+Friedrichstraße 100, 10117 Berlin, Germany ("Disclosing Party")
+
+and
+
+DataFlow Inc., a Delaware corporation with its principal place of business at 
+500 Market Street, San Francisco, CA 94105, USA ("Receiving Party")
+
+WHEREAS, the Disclosing Party possesses certain confidential and proprietary 
+information relating to artificial intelligence technology and legal data processing 
+systems; and
+
+WHEREAS, the Receiving Party desires to receive such information for the purpose of 
+evaluating a potential business partnership (the "Purpose");
+
+NOW, THEREFORE, the parties agree as follows:
+
+1. CONFIDENTIAL INFORMATION
+"Confidential Information" means all information, whether written or oral, disclosed 
+by the Disclosing Party, including but not limited to: trade secrets, algorithms, 
+source code, customer data, business plans, financial projections, and technical 
+specifications.
+
+2. NON-DISCLOSURE OBLIGATIONS  
+The Receiving Party shall:
+(a) Not disclose any Confidential Information to any third party;
+(b) Use Confidential Information solely for the Purpose;
+(c) Protect Confidential Information with reasonable care.
+
+3. TERM
+This Agreement shall remain in effect for a period of five (5) years from the 
+Effective Date. The confidentiality obligations shall survive termination for an 
+additional period of three (3) years.
+
+4. NON-COMPETE
+During the term of this Agreement and for a period of three (3) years thereafter, 
+the Receiving Party shall not, directly or indirectly, engage in any business that 
+competes with the Disclosing Party's AI legal technology business anywhere in 
+Europe and North America.
+
+5. NON-SOLICITATION
+For a period of two (2) years following the termination of this Agreement, the 
+Receiving Party shall not solicit, recruit, or hire any employee or contractor 
+of the Disclosing Party.
+
+6. INTELLECTUAL PROPERTY
+All intellectual property rights in any work product, inventions, or improvements 
+created by the Receiving Party using or based upon the Confidential Information 
+shall be the exclusive property of the Disclosing Party. The Receiving Party 
+hereby assigns all such rights to the Disclosing Party.
+
+7. LIABILITY
+The Receiving Party shall be liable for all direct, indirect, consequential, 
+incidental, and punitive damages arising from any breach of this Agreement. 
+There shall be no cap on the Receiving Party's liability under this Agreement.
+
+8. GOVERNING LAW
+This Agreement shall be governed by and construed in accordance with the laws of 
+the State of Delaware, USA, without regard to its conflict of laws provisions.
+
+9. DISPUTE RESOLUTION
+Any disputes arising under this Agreement shall be resolved exclusively in the 
+state and federal courts located in Wilmington, Delaware.
+
+10. ENTIRE AGREEMENT
+This Agreement constitutes the entire agreement between the parties with respect 
+to the subject matter hereof.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.
+
+TechCorp GmbH                          DataFlow Inc.
+By: _______________                     By: _______________
+Name: Dr. Hans Mueller                  Name: Sarah Chen
+Title: CEO                              Title: CTO
+Date: _______________                   Date: _______________

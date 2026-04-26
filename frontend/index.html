@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harveyy — Autonomous AI Law Firm</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#000;color:#fff;overflow-x:hidden}
+*::-webkit-scrollbar{width:5px}
+*::-webkit-scrollbar-track{background:#111}
+*::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+.font-serif{font-family:'Playfair Display',serif}
+.font-harvey{font-family:'DM Serif Display',serif;font-weight:400}
+/* Premium light dashboard theme */
+.dash-light{background:#fafaf9;color:#1a1a1a}
+.dash-light .card{background:#fff;border:1px solid #e8e5e0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.dash-light .card-header{font-family:'DM Serif Display',serif;font-weight:400;color:#1a1a1a}
+.dash-light input,.dash-light textarea{background:#fafaf9;border:1px solid #ddd8d0;color:#1a1a1a;font-family:'Inter',sans-serif}
+.dash-light input:focus,.dash-light textarea:focus{border-color:#999;outline:none}
+.dash-light .btn-primary{background:#1a1a1a;color:#fff;border:none;font-family:'DM Serif Display',serif;font-weight:400}
+.dash-light .btn-primary:hover{background:#333}
+.dash-light .btn-primary:disabled{background:#ccc;color:#999}
+.dash-light .btn-outline{background:transparent;border:1px solid #ddd8d0;color:#666}
+.dash-light .btn-outline:hover{border-color:#999;color:#1a1a1a}
+.badge-disputed{background:#ffe0e0;color:#c53030;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500}
+.badge-somewhat{background:#fefcbf;color:#975a16;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500}
+.badge-clear{background:#c6f6d5;color:#276749;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500}
+.table-premium{width:100%;border-collapse:separate;border-spacing:0}
+.table-premium th{text-align:left;padding:12px 16px;font-size:13px;color:#888;font-weight:500;border-bottom:1px solid #eee}
+.table-premium td{padding:14px 16px;border-bottom:1px solid #f5f3f0;font-size:14px;color:#333;vertical-align:middle}
+.table-premium tr:hover td{background:#faf9f7}
+.highlight-high{background:rgba(239,68,68,.25);border-bottom:2px solid #ef4444;padding:1px 2px;border-radius:2px;cursor:pointer}
+.highlight-medium{background:rgba(245,158,11,.2);border-bottom:2px solid #f59e0b;padding:1px 2px;border-radius:2px;cursor:pointer}
+.highlight-low{background:rgba(59,130,246,.15);border-bottom:2px solid #3b82f6;padding:1px 2px;border-radius:2px;cursor:pointer}
+@keyframes fade-up{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+.fade-up{animation:fade-up .8s ease both}
+.fade-up-d1{animation:fade-up .8s .15s ease both}
+.fade-up-d2{animation:fade-up .8s .3s ease both}
+.fade-up-d3{animation:fade-up .8s .45s ease both}
+.fade-in{animation:fade-in .6s ease both}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+.agent-active{animation:pulse-dot 1.2s infinite}
+@keyframes slide-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.slide-in{animation:slide-in .3s ease both}
+.hero-gradient{background:linear-gradient(90deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.6) 40%,rgba(0,0,0,.2) 70%,transparent 100%)}
+@keyframes hero-bg{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes smoke{0%,100%{opacity:.3;transform:scale(1) translateY(0)}50%{opacity:.15;transform:scale(1.1) translateY(-20px)}}
+.hero-cinematic{background:linear-gradient(-45deg,#0a0a0f,#1a0a1e,#0f1a2e,#0a0f1a,#1a0f0a,#0a0a0f);background-size:600% 600%;animation:hero-bg 20s ease infinite}
+.smoke-layer{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(100,80,60,.15) 0%,transparent 70%);animation:smoke 8s ease infinite}
+.smoke-layer-2{position:absolute;inset:0;background:radial-gradient(ellipse at 70% 60%,rgba(60,50,80,.12) 0%,transparent 60%);animation:smoke 12s ease infinite reverse}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const API="http://localhost:8000";
+const{useState,useEffect,useRef,useCallback}=React;
+
+/* ───────────── LANDING PAGE ───────────── */
+function LandingPage({onEnter}){
+  const vidRef=useRef();
+  useEffect(()=>{const v=vidRef.current;if(v){v.muted=true;v.play().catch(()=>{});const h=()=>{v.muted=true;v.play().catch(()=>{})};document.addEventListener('click',h,{once:true});return()=>document.removeEventListener('click',h)}},[]);
+  return(
+    <div className="relative min-h-screen bg-black overflow-hidden">
+      {/* ── Background: video if available, cinematic CSS fallback ── */}
+      {/* Layer 0: CSS animated fallback */}
+      <div className="hero-cinematic absolute inset-0" style={{zIndex:0}}/>
+      <div className="smoke-layer" style={{zIndex:1}}/>
+      <div className="smoke-layer-2" style={{zIndex:1}}/>
+      {/* Layer 2: Video on top of CSS bg */}
+      <video ref={vidRef} autoPlay muted loop playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{zIndex:2,filter:'brightness(0.45)',opacity:1}}>
+        <source src="hero.mp4?v=2" type="video/mp4"/>
+      </video>
+      {/* Layer 3: Gradient overlays for text readability */}
+      <div className="absolute inset-0" style={{zIndex:3,background:'linear-gradient(90deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.55) 45%,rgba(0,0,0,.15) 75%,transparent 100%)'}}/>
+      <div className="absolute inset-0" style={{zIndex:3,background:'linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 40%,transparent 80%,rgba(0,0,0,.4) 100%)'}}/>
+      {/* Background audio */}
+      <audio autoPlay loop style={{display:'none'}}><source src="bg-audio.mp3" type="audio/mpeg"/></audio>
+
+      {/* ── Top Bar ── */}
+      <nav className="relative z-20 flex items-center justify-between px-8 md:px-16 py-6">
+        <span className="text-2xl" style={{fontFamily:"'DM Serif Display', serif"}}>Harveyy</span>
+        <div className="hidden md:flex items-center gap-8 text-sm text-gray-300">
+          <span className="hover:text-white cursor-pointer transition">Platform</span>
+          <span className="hover:text-white cursor-pointer transition">Solutions</span>
+          <span className="hover:text-white cursor-pointer transition">Agents</span>
+          <span className="hover:text-white cursor-pointer transition">Security</span>
+          <span className="hover:text-white cursor-pointer transition">About</span>
+        </div>
+        <button onClick={onEnter} className="text-sm text-gray-300 hover:text-white transition">Login</button>
+      </nav>
+
+      {/* ── Announcement Bar ── */}
+      <div className="relative z-20 text-center py-2">
+        <span className="text-xs text-gray-400">Harveyy Agents execute legal work end-to-end.&nbsp;
+          <span onClick={onEnter} className="underline cursor-pointer hover:text-white transition">Learn more</span>
+        </span>
+      </div>
+
+      {/* ── Hero Content ── */}
+      <div className="relative z-20 flex flex-col justify-center px-8 md:px-16 mt-16 md:mt-24 lg:mt-32 max-w-3xl">
+        <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-medium leading-[1.05] tracking-tight fade-up" style={{fontStyle:'italic'}}>
+          This is Harveyy.<br/>Your best closer.
+        </h1>
+        <p className="mt-6 text-base md:text-lg text-gray-300 max-w-lg leading-relaxed fade-up-d1">
+          For German excellency: Preserve institutional knowledge. Automate the routine. Escalate the critical.
+        </p>
+        <div className="mt-10 fade-up-d2">
+          <button onClick={onEnter}
+            className="px-7 py-3.5 border border-white/80 rounded text-sm font-medium hover:bg-white hover:text-black transition-all duration-300">
+            Request a Demo
+          </button>
+        </div>
+      </div>
+
+      {/* ── Value Propositions ── */}
+      <div className="relative z-20 mt-32 md:mt-44 px-8 md:px-16 pb-32">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl">
+          {/* Today's Problems */}
+          <div className="fade-up-d2">
+            <h2 className="text-xs uppercase tracking-[.25em] text-gray-500 mb-6">Today</h2>
+            <div className="space-y-4">
+              {["Legal teams are overwhelmed by repetitive requests","Work is trapped in inboxes and individual knowledge","Contract review is slow and inconsistent","Business teams wait too long","High-risk issues can be missed"].map((t,i)=>(
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-400/60 mt-2 shrink-0"/>
+                  <p className="text-sm text-gray-400 leading-relaxed">{t}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* With Harveyy */}
+          <div className="fade-up-d3">
+            <h2 className="text-xs uppercase tracking-[.25em] text-gray-500 mb-6">With Harveyy</h2>
+            <div className="space-y-5">
+              {[{title:"Speed",desc:"Routine first-pass legal work gets done in minutes, not hours or days."},
+                {title:"Consistency",desc:"Every contract and inquiry is checked against the same playbook, risk matrix, and precedent logic."},
+                {title:"Risk reduction",desc:"The platform catches missing clauses, nonstandard terms, jurisdiction issues, and compliance red flags before they become expensive problems."},
+                {title:"Firm standards enforcement",desc:"Identifies risk against firm standards by automatically flagging deviations from your playbook and gold-standard requirements."},
+                {title:"Better lawyer leverage",desc:"Lawyers stop wasting time on repetitive triage and first-draft review, and spend more time on negotiation, strategy, and hard judgment calls."}
+              ].map((item,i)=>(
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-white mt-2 shrink-0"/>
+                  <div><p className="text-sm text-white font-medium mb-0.5">{item.title}</p><p className="text-sm text-gray-400 leading-relaxed">{item.desc}</p></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom Logo Strip ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-black/70 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-8 md:gap-12 text-xs md:text-sm text-gray-500 font-medium overflow-x-auto">
+            <span>Dentons</span>
+            <span>Hengeler Mueller</span>
+            <span>Baker McKenzie</span>
+            <span className="hidden md:inline">Freshfields</span>
+            <span className="hidden md:inline">Linklaters</span>
+            <span className="hidden md:inline">CMS</span>
+            <span className="hidden lg:inline">Allen & Overy</span>
+          </div>
+          <button onClick={onEnter} className="shrink-0 px-4 py-1.5 border border-white/20 rounded text-xs text-gray-400 hover:text-white hover:border-white/50 transition">
+            Our Customers
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── SHARED COMPONENTS ───────────── */
+function RiskBadge({level}){
+  const c={HIGH:"bg-red-500/20 text-red-400 border-red-500/40",MEDIUM:"bg-amber-500/20 text-amber-400 border-amber-500/40",LOW:"bg-blue-500/20 text-blue-400 border-blue-500/40",INFO:"bg-gray-500/20 text-gray-400 border-gray-500/40"};
+  return <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${c[level]||c.INFO}`}>{level}</span>;
+}
+
+function ScoreRing({score,size=80}){
+  const pct=score*10,color=score>=7?"#ef4444":score>=4?"#f59e0b":"#22c55e",r=32,circ=2*Math.PI*r;
+  return(
+    <div className="relative" style={{width:size,height:size}}>
+      <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
+        <circle cx="40" cy="40" r={r} fill="none" stroke="#1a1a2a" strokeWidth="6"/>
+        <circle cx="40" cy="40" r={r} fill="none" stroke={color} strokeWidth="6" strokeDasharray={circ} strokeDashoffset={circ*(1-pct/100)} strokeLinecap="round" style={{transition:'stroke-dashoffset 1s ease'}}/>
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center"><span className="text-xl font-bold">{score}</span></div>
+    </div>
+  );
+}
+
+function ContractViewer({text,clauses=[]}){
+  if(!text)return null;
+  let html=text.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const sorted=[...clauses].sort((a,b)=>(b.original_text||"").length-(a.original_text||"").length);
+  sorted.forEach(cl=>{
+    if(!cl.original_text)return;
+    const esc=cl.original_text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
+    try{const re=new RegExp(`(${esc.substring(0,150)})`,"gi");const l=(cl.risk_level||"LOW").toLowerCase();
+    html=html.replace(re,`<span class="highlight-${l}" title="${cl.clause_type}: ${(cl.explanation||'').substring(0,120)}">$1</span>`);}catch(e){}
+  });
+  return <pre className="whitespace-pre-wrap text-sm text-gray-300 leading-relaxed font-mono bg-[#0a0a14] rounded-lg p-5 max-h-[500px] overflow-auto border border-white/5" dangerouslySetInnerHTML={{__html:html}}/>;
+}
+
+function AgentDot({active,name}){
+  return(<div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${active?"bg-green-400 agent-active":"bg-gray-700"}`}/><span className="text-[11px] text-gray-500">{name}</span></div>);
+}
+
+function AuditTrail({trail=[]}){
+  if(!trail.length)return null;
+  return(<div className="space-y-1"><h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Audit Trail</h3>
+    {trail.map((e,i)=>(<div key={i} className="flex gap-3 text-xs slide-in" style={{animationDelay:`${i*40}ms`}}>
+      <span className="text-gray-700 w-14 shrink-0 font-mono">{e.timestamp?.split("T")[1]?.substring(0,8)}</span>
+      <span className="text-white/60 w-24 shrink-0 font-medium">{e.agent}</span>
+      <span className="text-gray-500">{e.action}{e.details?` — ${e.details}`:""}</span>
+    </div>))}</div>);
+}
+
+/* ───────────── DASHBOARD ───────────── */
+function Dashboard({onBack}){
+  const[tab,setTab]=useState("review");
+  const[loading,setLoading]=useState(false);
+  const[result,setResult]=useState(null);
+  const[contractText,setContractText]=useState("");
+  const[draftReq,setDraftReq]=useState("");
+  const[researchQ,setResearchQ]=useState("");
+  const[matterReq,setMatterReq]=useState("");
+  const[ragQuery,setRagQuery]=useState("");
+  const[ragResults,setRagResults]=useState(null);
+  const[kbCollections,setKbCollections]=useState([]);
+  const[kbUploading,setKbUploading]=useState(false);
+  const[kbResults,setKbResults]=useState(null);
+  const[folderPath,setFolderPath]=useState("");
+  const[kbCollection,setKbCollection]=useState("firm_policies");
+  const[intakeQs,setIntakeQs]=useState(null);   // array of {id, question, answer, type}
+  const[intakeStep,setIntakeStep]=useState(0);   // 0=no intake, 1=asking, 2=done
+  const[chatMsgs,setChatMsgs]=useState([]);      // {role:'user'|'ai', text, ts}
+  const[chatInput,setChatInput]=useState("");
+  const[dragOver,setDragOver]=useState(false);
+  const[triageList,setTriageList]=useState([     // uploaded contracts queue
+    {id:"t1",name:"BMW_DPA_v2.pdf",status:"needs_review",priority:"high",assignee:"Dr. Andreas",uploaded:"2 min ago",type:"DPA"},
+    {id:"t2",name:"Client_NDA_Draft.docx",status:"in_review",priority:"medium",assignee:"Ms. Silvia",uploaded:"1 hr ago",type:"NDA"},
+    {id:"t3",name:"SaaS_Agreement.pdf",status:"approved",priority:"low",assignee:"Mr. Juan A. Galán",uploaded:"Yesterday",type:"SaaS"},
+  ]);
+  const[teamMembers]=useState([
+    {id:"u1",name:"Dr. Peter",role:"CEO",avatar:"P",permissions:["review","draft","approve","admin"],status:"online"},
+    {id:"u2",name:"Ms. Silvia",role:"General Counsel",avatar:"S",permissions:["review","draft","approve"],status:"online"},
+    {id:"u3",name:"Mr. Juan A. Galán",role:"Head of Compliance",avatar:"J",permissions:["review","research","approve"],status:"online"},
+    {id:"u4",name:"Dr. Andreas",role:"Head of Legal",avatar:"A",permissions:["review","draft","research"],status:"online"},
+    {id:"u5",name:"Ms. Anna",role:"Contract Manager",avatar:"A",permissions:["review","draft"],status:"away"},
+    {id:"u6",name:"Mr. Mika Voss",role:"Risk & Data Protection",avatar:"M",permissions:["review","research"],status:"online"},
+    {id:"u7",name:"Mr. Robert",role:"External Affairs",avatar:"R",permissions:["review","research"],status:"away"},
+    {id:"u8",name:"Harveyy AI",role:"AI Legal Agent",avatar:"H",permissions:["review","draft","research","qa"],status:"online"},
+  ]);
+  const[showTeam,setShowTeam]=useState(false);
+  const[triageCases,setTriageCases]=useState([
+    {id:"tc1",title:"BMW DPA — Data Transfer Clause",contract:"BMW_DPA_v2.pdf",type:"DPA",risk:"HIGH",deadline:"2026-04-27T09:00",assignee:"Dr. Andreas",status:"escalated",reason:"Cross-border transfer clause violates Schrems II — needs CEO sign-off before BMW deadline",hoursLeft:8},
+    {id:"tc2",title:"Client NDA — Non-Compete Scope",contract:"Client_NDA_Draft.docx",type:"NDA",risk:"HIGH",deadline:"2026-04-27T14:00",assignee:"Ms. Silvia",status:"pending_review",reason:"Non-compete clause exceeds 2-year BGB limit — client meeting tomorrow at 2pm",hoursLeft:13},
+    {id:"tc3",title:"SaaS Agreement — Liability Cap Missing",contract:"SaaS_Agreement.pdf",type:"SaaS",risk:"MEDIUM",deadline:"2026-04-28T18:00",assignee:"Mr. Mika Voss",status:"in_progress",reason:"No liability cap — AI flagged but needs human confirmation before counterparty sends final",hoursLeft:41},
+    {id:"tc4",title:"Employment Contract — Probation Period",contract:"Arbeitsvertrag_Mueller.pdf",type:"Employment",risk:"MEDIUM",deadline:"2026-04-29T12:00",assignee:"Ms. Anna",status:"pending_review",reason:"Probation clause may conflict with Kündigungsschutzgesetz § 1 — HR needs response by Wed",hoursLeft:59},
+    {id:"tc5",title:"M&A LOI — IP Assignment Ambiguity",contract:"LOI_TechStartup.pdf",type:"M&A",risk:"HIGH",deadline:"2026-04-26T23:59",assignee:"Dr. Peter",status:"critical",reason:"IP assignment clause is ambiguous — board meeting in 23 hours, CEO must clarify ownership",hoursLeft:23},
+  ]);
+  const fileRef=useRef();
+  const kbFileRef=useRef();
+  const chatEndRef=useRef();
+
+  const loadCollections=async()=>{try{const r=await fetch(`${API}/api/kb/collections`);const d=await r.json();setKbCollections(d.collections||[]);}catch(e){}};
+  useEffect(()=>{loadCollections();},[]);
+  useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:'smooth'});},[chatMsgs]);
+
+  const uploadToKB=async(files)=>{setKbUploading(true);setKbResults(null);
+    try{const fd=new FormData();for(const f of files)fd.append('files',f);fd.append('collection',kbCollection);
+    const r=await fetch(`${API}/api/kb/upload-multiple`,{method:'POST',body:fd});
+    const d=await r.json();setKbResults(d);loadCollections();}catch(e){setKbResults({error:e.message});}
+    setKbUploading(false);};
+
+  const importFolder=async()=>{if(!folderPath.trim())return;setKbUploading(true);setKbResults(null);
+    try{const r=await fetch(`${API}/api/kb/import-folder`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder_path:folderPath,collection:kbCollection})});
+    const d=await r.json();setKbResults(d);loadCollections();}catch(e){setKbResults({error:e.message});}
+    setKbUploading(false);};
+
+  const callAPI=async(endpoint,body)=>{
+    setLoading(true);setResult(null);
+    try{const r=await fetch(`${API}${endpoint}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(!r.ok)throw new Error(`API ${r.status}`);setResult(await r.json());}
+    catch(e){setResult({error:e.message});}
+    setLoading(false);
+  };
+
+  const loadSample=()=>{setContractText(`NON-DISCLOSURE AGREEMENT
+
+This Non-Disclosure Agreement ("Agreement") is entered into as of January 15, 2026
+(the "Effective Date") by and between:
+
+TechCorp GmbH, a German limited liability company with its registered office at
+Friedrichstrasse 100, 10117 Berlin, Germany ("Disclosing Party")
+
+and
+
+DataFlow Inc., a Delaware corporation with its principal place of business at
+500 Market Street, San Francisco, CA 94105, USA ("Receiving Party")
+
+1. CONFIDENTIAL INFORMATION
+"Confidential Information" means all information, whether written or oral, disclosed
+by the Disclosing Party, including but not limited to: trade secrets, algorithms,
+source code, customer data, business plans, financial projections, and technical
+specifications.
+
+2. NON-DISCLOSURE OBLIGATIONS
+The Receiving Party shall:
+(a) Not disclose any Confidential Information to any third party;
+(b) Use Confidential Information solely for evaluating a potential partnership;
+(c) Protect Confidential Information with reasonable care.
+
+3. TERM
+This Agreement shall remain in effect for a period of five (5) years from the
+Effective Date. The confidentiality obligations shall survive termination for an
+additional period of three (3) years.
+
+4. NON-COMPETE
+During the term of this Agreement and for a period of three (3) years thereafter,
+the Receiving Party shall not, directly or indirectly, engage in any business that
+competes with the Disclosing Party's AI legal technology business anywhere in
+Europe and North America.
+
+5. NON-SOLICITATION
+For a period of two (2) years following the termination of this Agreement, the
+Receiving Party shall not solicit, recruit, or hire any employee or contractor
+of the Disclosing Party.
+
+6. INTELLECTUAL PROPERTY
+All intellectual property rights in any work product, inventions, or improvements
+created by the Receiving Party using or based upon the Confidential Information
+shall be the exclusive property of the Disclosing Party. The Receiving Party
+hereby assigns all such rights to the Disclosing Party.
+
+7. LIABILITY
+The Receiving Party shall be liable for all direct, indirect, consequential,
+incidental, and punitive damages arising from any breach of this Agreement.
+There shall be no cap on the Receiving Party's liability under this Agreement.
+
+8. GOVERNING LAW
+This Agreement shall be governed by and construed in accordance with the laws of
+the State of Delaware, USA, without regard to its conflict of laws provisions.
+
+9. DISPUTE RESOLUTION
+Any disputes arising under this Agreement shall be resolved exclusively in the
+state and federal courts located in Wilmington, Delaware.`);};
+
+  const handleFile=(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setContractText(ev.target.result);r.readAsText(f);};
+
+  const loadBMW=async()=>{try{const r=await fetch('demo/bmw_dpa_contract.txt');if(r.ok){setContractText(await r.text())}else{setContractText("Failed to load BMW DPA")}}catch(e){setContractText("Failed to load: "+e.message)}};
+
+  // Chat send — multilingual with citations
+  const sendChat=async()=>{
+    if(!chatInput.trim())return;
+    const msg=chatInput.trim();
+    setChatInput("");
+    const userMsg={role:"user",text:msg,ts:new Date().toLocaleTimeString()};
+    setChatMsgs(p=>[...p,userMsg]);
+    setChatMsgs(p=>[...p,{role:"ai",text:"Researching...",ts:new Date().toLocaleTimeString(),loading:true}]);
+    try{
+      const body={message:msg,context:intakeContext()};
+      if(contractText.trim().length>50)body.contract_text=contractText;
+      const r=await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const d=await r.json();
+      if(d.full_result&&contractText.trim().length>50)setResult(d.full_result);
+      const lang=d.detected_language||"en";
+      const langLabel={de:"🇩🇪 Deutsch",hi:"🇮🇳 हिन्दी",en:"🇬🇧 English"}[lang]||"";
+      setChatMsgs(p=>[...p.filter(m=>!m.loading),{role:"ai",text:d.reply||"No response.",ts:new Date().toLocaleTimeString(),lang:langLabel,sources:d.sources||[]}]);
+    }catch(e){setChatMsgs(p=>[...p.filter(m=>!m.loading),{role:"ai",text:"Error: "+e.message,ts:new Date().toLocaleTimeString()}]);}
+  };
+
+  // Drag and drop
+  const handleDrop=(e)=>{e.preventDefault();setDragOver(false);
+    const files=Array.from(e.dataTransfer.files);
+    if(files.length>0){
+      const f=files[0];
+      const reader=new FileReader();reader.onload=ev=>{
+        setContractText(ev.target.result);
+        const newItem={id:"t"+Date.now(),name:f.name,status:"needs_review",priority:"high",assignee:"Ayush",uploaded:"Just now",type:f.name.toLowerCase().includes("nda")?"NDA":f.name.toLowerCase().includes("dpa")?"DPA":"Contract"};
+        setTriageList(p=>[newItem,...p]);
+        setChatMsgs(p=>[...p,{role:"ai",text:`Uploaded "${f.name}" (${(f.size/1024).toFixed(1)}KB). I'll ask a few questions before reviewing.`,ts:new Date().toLocaleTimeString()}]);
+      };reader.readAsText(f);
+    }
+  };
+
+  // Smart intake: detect contract type and generate relevant questions
+  const detectAndAsk=(text)=>{
+    if(!text||text.trim().length<50){setIntakeQs(null);setIntakeStep(0);return;}
+    const t=text.toLowerCase();
+    let type="general";
+    if(t.includes("data processing")||t.includes("gdpr")||t.includes("personal data"))type="dpa";
+    else if(t.includes("non-disclosure")||t.includes("confidential information")||t.includes("nda"))type="nda";
+    else if(t.includes("employment")||t.includes("arbeitsvertrag")||t.includes("employee"))type="employment";
+    else if(t.includes("saas")||t.includes("subscription")||t.includes("service level"))type="saas";
+    else if(t.includes("consulting")||t.includes("consultant")||t.includes("advisory"))type="consulting";
+    else if(t.includes("license")||t.includes("intellectual property")||t.includes("royalt"))type="license";
+    else if(t.includes("lease")||t.includes("tenant")||t.includes("landlord"))type="lease";
+    else if(t.includes("merger")||t.includes("acquisition")||t.includes("share purchase"))type="ma";
+
+    const qMap={
+      dpa:[
+        {id:"goal",question:"What is your objective with this DPA review?",type:"select",options:["Ensure GDPR compliance","Negotiate better terms for our side","Check for missing clauses","Full risk assessment","Preparing for audit"]},
+        {id:"role",question:"Which party are you representing?",type:"select",options:["Data Controller (Company)","Data Processor","Both / Joint Controller"]},
+        {id:"deadline",question:"By when do you need to send this back?",type:"text",placeholder:"e.g., Friday EOD, 48 hours, urgent"},
+        {id:"transfers",question:"Will personal data be transferred outside the EU/EEA?",type:"select",options:["Yes","No","Not sure"]},
+        {id:"bestcase",question:"What's your best-case outcome?",type:"text",placeholder:"e.g., Partner signs as-is with minor tweaks"},
+        {id:"worstcase",question:"What's the worst-case scenario you want to avoid?",type:"text",placeholder:"e.g., Data breach liability falls entirely on us"},
+      ],
+      nda:[
+        {id:"goal",question:"What are you looking for from this review?",type:"select",options:["Check if safe to sign","Negotiate better terms","Identify risky clauses","Full risk assessment"]},
+        {id:"side",question:"Which side are you on?",type:"select",options:["Disclosing Party","Receiving Party","Mutual"]},
+        {id:"deadline",question:"When do you need this back?",type:"text",placeholder:"e.g., Tomorrow morning, 2 hours"},
+        {id:"concern",question:"Any specific concerns?",type:"select",options:["Non-compete is too broad","Duration seems excessive","IP assignment clause","No concerns yet — just review"]},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Sign with minor amendments"},
+        {id:"worstcase",question:"Worst-case scenario to avoid?",type:"text",placeholder:"e.g., Losing IP rights or getting locked into non-compete"},
+      ],
+      employment:[
+        {id:"goal",question:"What's your goal with this employment contract?",type:"select",options:["Review before signing","Check local law compliance","Negotiate better terms","Termination clause review"]},
+        {id:"role",question:"Are you the employer or employee?",type:"select",options:["Employer","Employee"]},
+        {id:"deadline",question:"By when do you have to send it back?",type:"text",placeholder:"e.g., Start date is next Monday"},
+        {id:"jurisdiction",question:"Which jurisdiction applies?",type:"text",placeholder:"e.g., Germany, California, UK"},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Fair terms for both sides"},
+        {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Unfair termination clause, excessive non-compete"},
+      ],
+      saas:[
+        {id:"goal",question:"What are you reviewing this SaaS agreement for?",type:"select",options:["Vendor due diligence","Negotiate pricing/terms","Data security review","Full legal review"]},
+        {id:"role",question:"Are you the provider or customer?",type:"select",options:["SaaS Provider","Customer/Buyer"]},
+        {id:"deadline",question:"When is the contract deadline?",type:"text",placeholder:"e.g., Renewal is in 2 weeks"},
+        {id:"concern",question:"Key concern?",type:"select",options:["SLA guarantees","Data ownership","Auto-renewal trap","Liability caps"]},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Lock in favorable SLA"},
+      ],
+      consulting:[
+        {id:"goal",question:"What do you need from this consulting agreement review?",type:"select",options:["Protect our IP","Ensure deliverables are clear","Check payment terms","Full risk review"]},
+        {id:"role",question:"Are you the consultant or the client?",type:"select",options:["Consultant","Client"]},
+        {id:"deadline",question:"When do you need it back?",type:"text",placeholder:"e.g., Before kickoff meeting Thursday"},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Clear scope, IP stays with us"},
+        {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Scope creep with no extra pay"},
+      ],
+      general:[
+        {id:"goal",question:"What are you looking for from this review?",type:"select",options:["Full risk assessment","Check if safe to sign","Identify missing clauses","Negotiate better terms","Compliance check"]},
+        {id:"deadline",question:"When do you need this back?",type:"text",placeholder:"e.g., End of day, 48 hours, ASAP"},
+        {id:"bestcase",question:"What's your best-case outcome?",type:"text",placeholder:"e.g., Sign with minor changes"},
+        {id:"worstcase",question:"What's the worst-case scenario to avoid?",type:"text",placeholder:"e.g., Unlimited liability exposure"},
+      ],
+      license:[
+        {id:"goal",question:"What's your objective?",type:"select",options:["Protect our IP","Review royalty terms","Check exclusivity scope","Full risk review"]},
+        {id:"role",question:"Are you the licensor or licensee?",type:"select",options:["Licensor","Licensee"]},
+        {id:"deadline",question:"When is the signing deadline?",type:"text",placeholder:"e.g., Next week"},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Non-exclusive with fair royalties"},
+        {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Losing control of IP"},
+      ],
+      lease:[
+        {id:"goal",question:"What do you need?",type:"select",options:["Review before signing","Check tenant rights","Negotiate rent terms","Full risk review"]},
+        {id:"role",question:"Are you the landlord or tenant?",type:"select",options:["Landlord","Tenant"]},
+        {id:"deadline",question:"When is the move-in / signing date?",type:"text",placeholder:"e.g., Lease starts June 1"},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Reasonable break clause"},
+      ],
+      ma:[
+        {id:"goal",question:"What are you looking for?",type:"select",options:["Due diligence review","Valuation check","Risk identification","Regulatory compliance"]},
+        {id:"role",question:"Which side?",type:"select",options:["Acquirer / Buyer","Target / Seller","Advisor"]},
+        {id:"deadline",question:"When is the deal deadline?",type:"text",placeholder:"e.g., Closing in 3 weeks"},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Clean deal, no hidden liabilities"},
+        {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Undisclosed litigation or debt"},
+      ],
+    };
+    const questions=(qMap[type]||qMap.general).map(q=>({...q,answer:""}));
+    setIntakeQs(questions);
+    setIntakeStep(1);
+    return type;
+  };
+
+  // When contract text changes significantly, trigger intake
+  const prevLen=useRef(0);
+  useEffect(()=>{
+    const len=contractText.trim().length;
+    if(len>100&&prevLen.current<100){detectAndAsk(contractText);}
+    if(len<50&&prevLen.current>=50){setIntakeQs(null);setIntakeStep(0);}
+    prevLen.current=len;
+  },[contractText]);
+
+  const updateIntakeAnswer=(id,val)=>{setIntakeQs(prev=>prev.map(q=>q.id===id?{...q,answer:val}:q));};
+  const intakeContext=()=>{if(!intakeQs)return{};const ctx={};intakeQs.forEach(q=>{if(q.answer)ctx[q.id]=q.answer;});return ctx;};
+
+  const searchRAG=async()=>{if(!ragQuery.trim())return;setLoading(true);
+    try{const r=await fetch(`${API}/api/rag/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:ragQuery,n_results:5})});setRagResults(await r.json());}
+    catch(e){setRagResults({error:e.message});}setLoading(false);};
+
+  const rv=result?.agent_results?.contract_review||(result?.agent==="contract_review"?result:null);
+  const dr=result?.agent_results?.drafting||(result?.agent==="drafting"?result:null);
+  const rs=result?.agent_results?.legal_research||(result?.agent==="legal_research"?result:null);
+  const qa=result?.agent_results?.qa_review||null;
+
+  const urgentCount=triageCases.filter(c=>c.hoursLeft<=24).length;
+  const tabs=[{id:"review",label:"Contract Review",ic:"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"},
+    {id:"triage",label:`Triage${urgentCount?` (${urgentCount})`:``}`,ic:"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"},
+    {id:"draft",label:"Draft Contract",ic:"M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"},
+    {id:"research",label:"Legal Research",ic:"M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"},
+    {id:"matter",label:"Full Matter",ic:"M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"},
+    {id:"rag",label:"Q&A",ic:"M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"},
+    {id:"kb",label:"Knowledge Base",ic:"M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"}];
+
+  return(
+    <div className="min-h-screen dash-light">
+      {/* Premium Header */}
+      <header className="border-b border-[#e8e5e0] bg-white/90 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-[1400px] mx-auto px-6 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <button onClick={onBack} className="font-harvey text-xl text-[#1a1a1a] hover:opacity-60 transition">Harveyy</button>
+            <div className="h-5 w-px bg-[#e0ddd8]"/>
+            <div className="flex gap-1">
+              {tabs.map(t=>(
+                <button key={t.id} onClick={()=>{setTab(t.id);setResult(null);}}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition ${tab===t.id?"bg-[#1a1a1a] text-white shadow-sm":"text-[#888] hover:text-[#1a1a1a] hover:bg-[#f0ede8]"}`}>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d={t.ic}/></svg>
+                  <span className="hidden md:inline">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <AgentDot active={loading} name="Intake"/>
+            <AgentDot active={loading} name="Review"/>
+            <AgentDot active={loading} name="Research"/>
+            <AgentDot active={loading} name="Drafting"/>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* ─── LEFT: INPUT (2 cols) ─── */}
+          <div className="lg:col-span-2 space-y-4">
+
+            {tab==="review"&&(<div className="space-y-4">
+
+              {/* ── Drag & Drop Upload Zone ── */}
+              {!contractText.trim()&&(<div className={`card p-8 text-center transition-all ${dragOver?'border-2 border-dashed border-indigo-400 bg-indigo-50/50':'border border-dashed border-[#d5d0c8]'}`}
+                onDragOver={e=>{e.preventDefault();setDragOver(true)}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-[#f5f3f0] flex items-center justify-center">
+                    <svg className="w-6 h-6 text-[#999]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15m0-3l-3-3m0 0l-3 3m3-3v11.25"/></svg>
+                  </div>
+                  <p className="font-harvey text-lg text-[#333]">Drag and drop your files</p>
+                  <button onClick={()=>fileRef.current?.click()} className="px-5 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#333] transition flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    Upload</button>
+                  <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.docx,.csv,.json" className="hidden" onChange={handleFile}/>
+                  <p className="text-xs text-[#bbb]">Or choose from</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <button onClick={loadSample} className="px-3 py-1.5 rounded-lg text-xs border border-[#e0ddd8] bg-white hover:bg-[#fafaf9] transition flex items-center gap-1.5"><span className="text-blue-500">&#9679;</span> Sample NDA</button>
+                    <button onClick={loadBMW} className="px-3 py-1.5 rounded-lg text-xs border border-[#e0ddd8] bg-white hover:bg-[#fafaf9] transition flex items-center gap-1.5"><span className="text-green-500">&#9679;</span> BMW DPA</button>
+                    <button className="px-3 py-1.5 rounded-lg text-xs border border-[#e0ddd8] bg-white hover:bg-[#fafaf9] transition flex items-center gap-1.5 opacity-50"><span className="text-orange-400">&#9679;</span> SharePoint</button>
+                    <button className="px-3 py-1.5 rounded-lg text-xs border border-[#e0ddd8] bg-white hover:bg-[#fafaf9] transition flex items-center gap-1.5 opacity-50"><span className="text-yellow-500">&#9679;</span> Google Drive</button>
+                  </div>
+                </div>
+              </div>)}
+
+              {/* ── Contract loaded: show preview + intake ── */}
+              {contractText.trim().length>0&&(<div className="card p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center"><svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                    <div><p className="text-sm font-medium text-[#333]">Contract loaded</p><p className="text-[11px] text-[#999]">{contractText.length.toLocaleString()} characters</p></div>
+                  </div>
+                  <button onClick={()=>{setContractText("");setIntakeQs(null);setIntakeStep(0);setChatMsgs([]);setResult(null)}} className="text-xs text-red-500 hover:text-red-700 transition">Remove</button>
+                </div>
+                <details className="text-xs">
+                  <summary className="text-[#999] cursor-pointer hover:text-[#666]">Preview contract text</summary>
+                  <pre className="mt-2 max-h-40 overflow-auto text-[11px] text-[#666] bg-[#fafaf9] rounded-lg p-3 font-mono whitespace-pre-wrap">{contractText.slice(0,1500)}{contractText.length>1500?"...":""}</pre>
+                </details>
+              </div>)}
+
+              {/* ── Smart Intake Questionnaire ── */}
+              {intakeStep===1&&intakeQs&&(<div className="card p-5 space-y-3 slide-in border-l-4 border-l-indigo-400">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                  <div><h3 className="text-sm font-semibold text-[#333]">Before we review...</h3><p className="text-[10px] text-[#999]">Help the AI focus. Skip any you don't need.</p></div>
+                </div>
+                <div className="space-y-2.5">
+                  {intakeQs.map((q,i)=>(<div key={q.id} className="slide-in" style={{animationDelay:`${i*50}ms`}}>
+                    <label className="text-xs font-medium text-[#444] block mb-1">{q.question}</label>
+                    {q.type==="select"?(
+                      <div className="flex flex-wrap gap-1">
+                        {q.options.map(o=>(<button key={o} onClick={()=>updateIntakeAnswer(q.id,o)}
+                          className={`px-2.5 py-1 rounded text-[11px] transition border ${q.answer===o?'bg-indigo-600 text-white border-indigo-600':'bg-white text-[#555] border-[#e0ddd8] hover:border-indigo-300'}`}>{o}</button>))}
+                      </div>
+                    ):(
+                      <input value={q.answer} onChange={e=>updateIntakeAnswer(q.id,e.target.value)}
+                        className="w-full rounded-lg p-2 text-xs border border-[#e0ddd8]" placeholder={q.placeholder||""}/>
+                    )}
+                  </div>))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={()=>{setIntakeStep(2);callAPI("/api/review",{contract_text:contractText,context:intakeContext()})}} disabled={loading}
+                    className="btn-primary flex-1 py-2.5 rounded-lg text-xs transition">
+                    {loading?"Analyzing...":"Analyze Contract"}</button>
+                  <button onClick={()=>{setIntakeStep(2);callAPI("/api/review",{contract_text:contractText})}} disabled={loading}
+                    className="btn-outline px-3 py-2.5 rounded-lg text-[11px] transition">Skip</button>
+                </div>
+              </div>)}
+
+              {/* Analyze button when intake done */}
+              {intakeStep===2&&contractText.trim().length>0&&!loading&&(
+                <button onClick={()=>callAPI("/api/review",{contract_text:contractText,context:intakeContext()})} disabled={loading}
+                  className="btn-primary w-full py-2.5 rounded-lg text-xs transition">Re-analyze Contract</button>
+              )}
+
+              {/* ── Triage List ── */}
+              <div className="card p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-[#333] uppercase tracking-wider">Contract Queue</h3>
+                  <span className="text-[10px] px-2 py-0.5 bg-[#f5f3f0] rounded text-[#999]">{triageList.length} items</span>
+                </div>
+                <div className="space-y-1.5">
+                  {triageList.map(t=>(<div key={t.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[#fafaf9] transition cursor-pointer group"
+                    onClick={()=>{if(t.name.includes("BMW"))loadBMW();else if(t.name.includes("NDA"))loadSample()}}>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${t.status==='needs_review'?'bg-red-400':t.status==='in_review'?'bg-amber-400':'bg-green-400'}`}/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[#333] truncate">{t.name}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-[#999]">
+                        <span>{t.type}</span><span>&middot;</span><span>{t.uploaded}</span><span>&middot;</span><span>{t.assignee}</span>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${t.status==='needs_review'?'bg-red-50 text-red-600':t.status==='in_review'?'bg-amber-50 text-amber-600':'bg-green-50 text-green-600'}`}>
+                      {t.status.replace(/_/g,' ')}</span>
+                  </div>))}
+                </div>
+              </div>
+
+              {/* ── Team Members ── */}
+              <div className="card p-4">
+                <button onClick={()=>setShowTeam(!showTeam)} className="flex items-center justify-between w-full">
+                  <h3 className="text-xs font-semibold text-[#333] uppercase tracking-wider">Team Members</h3>
+                  <div className="flex items-center gap-1">
+                    <div className="flex -space-x-1.5">
+                      {teamMembers.map(m=>(<div key={m.id} className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${m.name==='AI Agent'?'bg-indigo-600':'bg-[#1a1a1a]'} ring-2 ring-white`}>{m.avatar}</div>))}
+                    </div>
+                    <svg className={`w-3.5 h-3.5 text-[#999] transition ${showTeam?'rotate-180':''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                  </div>
+                </button>
+                {showTeam&&(<div className="mt-3 space-y-2 slide-in">
+                  {teamMembers.map(m=>(<div key={m.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#fafaf9]">
+                    <div className="relative">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${m.name==='AI Agent'?'bg-indigo-600':'bg-[#1a1a1a]'}`}>{m.avatar}</div>
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${m.status==='online'?'bg-green-400':'bg-amber-400'}`}/>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[#333]">{m.name}</p>
+                      <p className="text-[10px] text-[#999]">{m.role}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-0.5 max-w-[100px]">
+                      {m.permissions.map(p=>(<span key={p} className={`text-[8px] px-1.5 py-0.5 rounded ${p==='admin'?'bg-red-50 text-red-600':p==='approve'?'bg-green-50 text-green-600':'bg-[#f5f3f0] text-[#888]'}`}>{p}</span>))}
+                    </div>
+                  </div>))}
+                </div>)}
+              </div>
+
+              {/* ── ChatGPT-style Chat Box ── */}
+              <div className="card overflow-hidden">
+                <div className="p-3 border-b border-[#e8e5e0] flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center"><span className="text-[9px] font-bold text-white">H</span></div>
+                  <span className="text-xs font-semibold text-[#333]">Harveyy AI</span>
+                  <span className="text-[10px] text-green-500 ml-auto flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400"/>Online</span>
+                </div>
+                <div className="h-48 overflow-y-auto p-3 space-y-2 bg-[#fafaf9]" style={{scrollBehavior:'smooth'}}>
+                  {chatMsgs.length===0&&(<div className="text-center py-6">
+                    <p className="text-xs text-[#bbb]">Upload a contract and ask me anything.</p>
+                    <p className="text-[10px] text-[#ddd] mt-1">"Check for GDPR issues" &middot; "Ist diese Klausel nach BGB durchsetzbar?" &middot; "इस अनुबंध में क्या जोखिम हैं?"</p>
+                  </div>)}
+                  {chatMsgs.map((m,i)=>(<div key={i} className={`flex ${m.role==='user'?'justify-end':'justify-start'} slide-in`}>
+                    <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${m.role==='user'?'bg-[#1a1a1a] text-white rounded-br-sm':'bg-white text-[#333] border border-[#e8e5e0] rounded-bl-sm'} ${m.loading?'animate-pulse':''}`}>
+                      <div style={{whiteSpace:'pre-wrap'}}>{m.text}</div>
+                      {m.sources?.length>0&&(<div className="mt-1.5 pt-1.5 border-t border-[#e8e5e0]"><span className="text-[9px] text-[#999]">Sources: {m.sources.join(", ")}</span></div>)}
+                      <div className={`flex items-center gap-1.5 text-[9px] mt-1 ${m.role==='user'?'text-white/40':'text-[#ccc]'}`}>
+                        <span>{m.ts}</span>
+                        {m.lang&&<span className="px-1 py-0.5 bg-[#f5f3f0] rounded text-[8px] text-[#888]">{m.lang}</span>}
+                      </div>
+                    </div>
+                  </div>))}
+                  <div ref={chatEndRef}/>
+                </div>
+                <div className="p-2 border-t border-[#e8e5e0] flex gap-2">
+                  <input value={chatInput} onChange={e=>setChatInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}}}
+                    className="flex-1 rounded-lg px-3 py-2 text-xs border border-[#e0ddd8] bg-white" placeholder="Ask in English, Deutsch, or हिन्दी..."/>
+                  <button onClick={sendChat} disabled={loading||!chatInput.trim()}
+                    className="px-3 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#333] transition disabled:opacity-30">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                  </button>
+                </div>
+              </div>
+
+            </div>)}
+
+            {tab==="triage"&&(<div className="space-y-4">
+              {/* Urgent Banner */}
+              <div className="rounded-xl p-4" style={{background:'linear-gradient(135deg,#dc2626,#991b1b)'}}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  </div>
+                  <div>
+                    <h2 className="text-white font-semibold text-sm">{triageCases.filter(c=>c.hoursLeft<=24).length} cases need urgent human attention</h2>
+                    <p className="text-white/70 text-xs">Deadlines within the next 24 hours</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Triage Stats */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="card p-3 text-center"><p className="text-lg font-semibold text-red-600">{triageCases.filter(c=>c.status==='critical'||c.status==='escalated').length}</p><p className="text-[10px] text-[#999] uppercase">Critical</p></div>
+                <div className="card p-3 text-center"><p className="text-lg font-semibold text-amber-600">{triageCases.filter(c=>c.status==='pending_review').length}</p><p className="text-[10px] text-[#999] uppercase">Pending Review</p></div>
+                <div className="card p-3 text-center"><p className="text-lg font-semibold text-green-600">{triageCases.filter(c=>c.status==='in_progress').length}</p><p className="text-[10px] text-[#999] uppercase">In Progress</p></div>
+              </div>
+
+              {/* Case List — sorted by urgency */}
+              <div className="space-y-2">
+                {[...triageCases].sort((a,b)=>a.hoursLeft-b.hoursLeft).map((c,i)=>(<div key={c.id} className={`card p-4 slide-in border-l-4 ${c.hoursLeft<=12?'border-l-red-500':c.hoursLeft<=24?'border-l-amber-400':'border-l-[#e0ddd8]'}`} style={{animationDelay:`${i*60}ms`}}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${c.risk==='HIGH'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}`}>{c.risk}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${c.status==='critical'?'bg-red-600 text-white':c.status==='escalated'?'bg-red-100 text-red-600':c.status==='pending_review'?'bg-amber-100 text-amber-600':'bg-blue-100 text-blue-600'}`}>{c.status.replace(/_/g,' ')}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-[#f5f3f0] rounded text-[#888]">{c.type}</span>
+                      </div>
+                      <h4 className="text-sm font-medium text-[#333] leading-tight">{c.title}</h4>
+                      <p className="text-[11px] text-[#888] mt-1 leading-relaxed">{c.reason}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#f0ede8]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-[#1a1a1a] flex items-center justify-center text-[8px] font-bold text-white">{c.assignee[0]}</div>
+                        <span className="text-[10px] text-[#888]">{c.assignee}</span>
+                      </div>
+                      <span className="text-[10px] text-[#bbb]">{c.contract}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-semibold ${c.hoursLeft<=12?'text-red-600':c.hoursLeft<=24?'text-amber-600':'text-[#888]'}`}>
+                        {c.hoursLeft<=12?`${c.hoursLeft}h left`:c.hoursLeft<=24?`${c.hoursLeft}h left`:`${Math.floor(c.hoursLeft/24)}d ${c.hoursLeft%24}h`}
+                      </span>
+                      <button onClick={()=>{setTriageCases(p=>p.map(x=>x.id===c.id?{...x,status:'in_progress'}:x))}}
+                        className="text-[10px] px-2 py-1 bg-[#1a1a1a] text-white rounded hover:bg-[#333] transition">Take Action</button>
+                    </div>
+                  </div>
+                </div>))}
+              </div>
+            </div>)}
+
+            {tab==="draft"&&(<div className="card p-6 space-y-4">
+              <div><h2 className="card-header text-xl">Draft New Contract</h2><p className="text-xs text-[#999] mt-1">Describe what you need. AI picks the right template and generates a complete contract.</p></div>
+              <div className="flex flex-wrap gap-1.5">
+                {["Mutual NDA between German startup and US investor","SaaS agreement with GDPR compliance","German employment contract (Arbeitsvertrag)","Consulting agreement for AI project","GDPR Data Processing Agreement (Art. 28)"].map(s=>(
+                  <button key={s} onClick={()=>setDraftReq(s)} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
+              </div>
+              <textarea value={draftReq} onChange={e=>setDraftReq(e.target.value)} rows={8}
+                className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Describe the contract you need in detail..."/>
+              <button onClick={()=>callAPI("/api/draft-with-approval",{requirements:draftReq})} disabled={loading||!draftReq.trim()}
+                className="btn-primary w-full py-3 rounded-lg text-sm transition">
+                {loading?"Generating...":"Draft & Request Partner Approval"}</button>
+              <p className="text-[10px] text-[#bbb] text-center">Draft will be sent to Slack for partner review before delivery</p>
+            </div>)}
+
+            {tab==="research"&&(<div className="card p-6 space-y-4">
+              <div><h2 className="card-header text-xl">Legal Research</h2><p className="text-xs text-[#999] mt-1">RAG-powered search across German law, EU regulations, and US contract law.</p></div>
+              <div className="flex flex-wrap gap-1.5">
+                {["GDPR requirements for data processing agreements","Non-compete enforceability under German BGB","Schrems II implications for US data transfers","German employment termination notice periods under 622 BGB"].map(s=>(
+                  <button key={s} onClick={()=>setResearchQ(s)} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
+              </div>
+              <textarea value={researchQ} onChange={e=>setResearchQ(e.target.value)} rows={5}
+                className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Ask a legal question..."/>
+              <button onClick={()=>callAPI("/api/research",{question:researchQ})} disabled={loading||!researchQ.trim()}
+                className="btn-primary w-full py-3 rounded-lg text-sm transition">
+                {loading?"Researching...":"Research"}</button>
+            </div>)}
+
+            {tab==="matter"&&(<div className="card p-6 space-y-4">
+              <div><h2 className="card-header text-xl">Full Matter</h2><p className="text-xs text-[#999] mt-1">Complex request? The orchestrator routes it through all agents automatically.</p></div>
+              <textarea value={matterReq} onChange={e=>setMatterReq(e.target.value)} rows={4}
+                className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Describe your legal need..."/>
+              <textarea value={contractText} onChange={e=>setContractText(e.target.value)} rows={8}
+                className="w-full rounded-lg p-4 text-[13px] font-mono resize-none" placeholder="(Optional) Paste contract text..."/>
+              <button onClick={()=>callAPI("/api/matters",{request:matterReq,contract_text:contractText||null})} disabled={loading||!matterReq.trim()}
+                className="btn-primary w-full py-3 rounded-lg text-sm transition">
+                {loading?"Processing...":"Submit Matter"}</button>
+            </div>)}
+
+            {tab==="rag"&&(<div className="card p-6 space-y-4">
+              <div><h2 className="card-header text-xl">Q&A</h2><p className="text-xs text-[#999] mt-1">Ask any legal question — searches across German law, CUAD clauses, and your knowledge base.</p></div>
+              <input value={ragQuery} onChange={e=>setRagQuery(e.target.value)}
+                className="w-full rounded-lg p-3 text-sm" placeholder="Search legal knowledge base..."/>
+              <button onClick={searchRAG} disabled={loading||!ragQuery.trim()}
+                className="btn-primary w-full py-3 rounded-lg text-sm transition">
+                {loading?"Searching...":"Search"}</button>
+              {ragResults&&(<div className="space-y-2 mt-2">
+                {ragResults.error&&<p className="text-red-600 text-xs">{ragResults.error}</p>}
+                {(ragResults.results||[]).map((r,i)=>(<div key={i} className="card p-3 slide-in">
+                  <div className="flex justify-between mb-1"><span className="text-[11px] text-indigo-600 font-medium">{r.metadata?.source||"Unknown"}</span><span className="text-[11px] text-[#bbb]">dist: {r.distance?.toFixed(3)}</span></div>
+                  <p className="text-xs text-[#666]">{r.text?.substring(0,250)}</p></div>))}
+              </div>)}
+            </div>)}
+            {tab==="kb"&&(<div className="space-y-4">
+              {/* Collaborative Reviews Banner */}
+              <div className="rounded-xl overflow-hidden" style={{background:'#1a1a1a'}}>
+                <div className="px-6 py-5">
+                  <h2 className="font-harvey text-xl text-white mb-1.5">Collaborative reviews and discovery</h2>
+                  <p className="text-sm text-[#aaa] leading-relaxed">Conduct joint due diligence or discovery with shared vaults and review tables.</p>
+                </div>
+              </div>
+
+              {/* Create Knowledge Base Card */}
+              <div className="card p-0 overflow-hidden">
+                <div className="flex">
+                  {/* Left: Form */}
+                  <div className="flex-1 p-6 space-y-5">
+                    <div>
+                      <h2 className="font-harvey text-xl text-[#1a1a1a]">Create knowledge base</h2>
+                      <p className="text-sm text-[#888] mt-0.5">Distribute a repository of files to your organization</p>
+                    </div>
+
+                    <div>
+                      <label className="text-sm text-[#555] block mb-1.5">Project name</label>
+                      <input value={kbCollection} onChange={e=>setKbCollection(e.target.value)}
+                        className="w-full rounded-lg px-4 py-2.5 text-sm border border-[#ddd8d0] bg-[#fafaf9] text-[#1a1a1a] focus:border-[#999] focus:outline-none" placeholder="Acme Corp Knowledge Base"/>
+                    </div>
+
+                    <div>
+                      <label className="text-sm text-[#555] block mb-1.5">Description</label>
+                      <textarea rows={3}
+                        className="w-full rounded-lg px-4 py-2.5 text-sm border border-[#ddd8d0] bg-[#fafaf9] text-[#1a1a1a] resize-none focus:border-[#999] focus:outline-none" placeholder="Describe what this vault should be used for"/>
+                    </div>
+
+                    {/* Upload area */}
+                    <div className="border-2 border-dashed border-[#ddd8d0] rounded-lg p-5 text-center hover:border-[#999] transition cursor-pointer" onClick={()=>kbFileRef.current?.click()}
+                      onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor='#999'}} onDragLeave={e=>{e.currentTarget.style.borderColor='#ddd8d0'}}
+                      onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor='#ddd8d0';uploadToKB(e.dataTransfer.files)}}>
+                      <svg className="w-8 h-8 mx-auto mb-2 text-[#ccc]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+                      <p className="text-sm text-[#888]">Drag & drop files here or click to browse</p>
+                      <p className="text-[11px] text-[#bbb] mt-1">.txt .md .pdf .json .csv supported</p>
+                      <input ref={kbFileRef} type="file" multiple accept=".txt,.md,.pdf,.json,.csv,.docx" className="hidden" onChange={e=>uploadToKB(e.target.files)}/>
+                    </div>
+
+                    {/* Folder import */}
+                    <div>
+                      <label className="text-sm text-[#555] block mb-1.5">Or import from folder path</label>
+                      <div className="flex gap-2">
+                        <input value={folderPath} onChange={e=>setFolderPath(e.target.value)}
+                          className="flex-1 rounded-lg px-4 py-2.5 text-sm border border-[#ddd8d0] bg-[#fafaf9] text-[#1a1a1a] focus:border-[#999] focus:outline-none" placeholder="C:\\path\\to\\policy\\documents"/>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-3 pt-2">
+                      <button onClick={()=>{if(folderPath.trim()){importFolder()}else{kbFileRef.current?.click()}}} disabled={kbUploading}
+                        className="px-5 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#333] disabled:bg-[#ccc] transition">
+                        {kbUploading?"Creating...":"Create project"}</button>
+                      <button onClick={()=>{setKbResults(null);setFolderPath("")}}
+                        className="px-5 py-2.5 bg-white text-[#333] rounded-lg text-sm font-medium border border-[#ddd8d0] hover:bg-[#f5f3f0] transition">Cancel</button>
+                    </div>
+                  </div>
+
+                  {/* Right: Preview Card */}
+                  <div className="w-52 border-l border-[#e8e5e0] p-4 flex flex-col items-center justify-center bg-[#fafaf9]">
+                    <div className="w-36 h-24 rounded-lg mb-3 flex items-center justify-center" style={{background:'linear-gradient(135deg,#8b7355,#5c4a32)'}}>
+                      <svg className="w-8 h-8 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+                    </div>
+                    <p className="text-xs text-[#333] font-medium text-center truncate w-full">{kbCollection||"New Vault"}</p>
+                    <p className="text-[11px] text-[#999]">0 files</p>
+                    <button className="mt-2 px-3 py-1 text-[11px] border border-[#ddd8d0] rounded text-[#666] hover:bg-[#f0ede8] transition flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg>
+                      Update</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Vaults */}
+              {kbCollections.length>0&&(<div className="card p-6">
+                <h3 className="font-harvey text-lg text-[#1a1a1a] mb-3">Active Vaults</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {kbCollections.map((c,i)=>(<div key={i} className="rounded-lg border border-[#e8e5e0] p-4 hover:shadow-sm transition">
+                    <div className="w-full h-14 rounded-md mb-2.5 flex items-center justify-center" style={{background:'linear-gradient(135deg,#8b7355,#5c4a32)'}}>
+                      <svg className="w-5 h-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375"/></svg>
+                    </div>
+                    <p className="text-sm text-[#333] font-medium">{c.name}</p>
+                    <p className="text-[11px] text-[#999]">{c.count} chunks indexed</p>
+                  </div>))}
+                </div>
+              </div>)}
+
+              {/* Status messages */}
+              {kbUploading&&(<div className="card p-6 text-center"><div className="inline-block w-5 h-5 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin"/><p className="text-xs text-[#999] mt-2">Indexing documents into vector store...</p></div>)}
+              {kbResults&&!kbResults.error&&(<div className="bg-green-50 border border-green-200 rounded-lg p-4 slide-in">
+                <p className="text-sm text-green-700 font-medium">Indexed {kbResults.total_chunks||kbResults.chunks_created||0} chunks from {kbResults.total_files||1} file(s) into '{kbResults.collection}'</p>
+                {(kbResults.files||[]).map((f,i)=>(<p key={i} className="text-[11px] text-[#888] mt-0.5">{f.name}: {f.chunks||0} chunks {f.error?`(${f.error})`:''}</p>))}
+              </div>)}
+              {kbResults?.error&&(<div className="bg-red-50 border border-red-200 rounded-lg p-4"><p className="text-xs text-red-600">{kbResults.error}</p></div>)}
+            </div>)}
+          </div>
+
+          {/* ─── RIGHT: RESULTS (3 cols) ─── */}
+          <div className="lg:col-span-3 space-y-4">
+            {loading&&(<div className="card p-10 text-center">
+              <div className="inline-block w-6 h-6 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin mb-3"/>
+              <p className="text-[#888] text-sm">Agents are processing your request...</p>
+            </div>)}
+
+            {!loading&&!result&&(<div className="card p-10 text-center">
+              <div className="text-[#ccc] text-4xl mb-3">&#9878;</div>
+              <p className="text-[#888] text-sm">Submit a request to see results here.</p>
+              <p className="text-[#bbb] text-xs mt-1">Your AI legal team is standing by.</p>
+            </div>)}
+
+            {result?.error&&(<div className="bg-red-50 border border-red-200 rounded-xl p-5">
+              <h3 className="text-red-700 font-semibold text-sm mb-1">Connection Error</h3>
+              <p className="text-xs text-red-500">{result.error}</p>
+              <p className="text-[11px] text-[#999] mt-2">Start the backend: <code className="text-red-400">python -m uvicorn backend.main:app --reload --port 8000</code></p>
+            </div>)}
+
+            {/* ── Intake Brief (if provided) ── */}
+            {result?.intake_brief&&!result?.error&&(<div className="card p-4 border-l-4 border-l-indigo-400 slide-in">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">Intake Context</span>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {Object.entries(result.intake_brief).map(([k,v])=>v?(<div key={k} className="text-xs"><span className="text-[#999] capitalize">{k.replace(/([A-Z])/g,' $1')}:</span> <span className="text-[#555] font-medium">{v}</span></div>):null)}
+              </div>
+            </div>)}
+
+            {/* ── Contract Review Results ── */}
+            {rv&&!result?.error&&(<div className="space-y-4 fade-in">
+              {/* Summary Card */}
+              <div className="card p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div><h2 className="card-header text-xl">Review Results</h2>
+                    <p className="text-xs text-[#999] mt-1">{rv.contract_type} &middot; {(rv.parties_identified||[]).join(" & ")}</p></div>
+                  <ScoreRing score={rv.overall_risk_score||0}/>
+                </div>
+                <div className="flex gap-2 mb-3"><RiskBadge level={rv.risk_level||"MEDIUM"}/><span className="text-[11px] text-[#999]">{(rv.clauses_found||[]).length} clauses flagged</span></div>
+                <p className="text-sm text-[#555] leading-relaxed">{rv.executive_summary}</p>
+              </div>
+
+              {/* Firm Standards Compliance Card */}
+              <div className="card p-5 border-l-4 border-l-amber-400 bg-amber-50/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  <h3 className="text-sm font-semibold text-amber-800">Firm Standards Compliance</h3>
+                </div>
+                <p className="text-xs text-amber-700 leading-relaxed">Identifies risk against firm standards by automatically flagging deviations from your playbook and gold-standard requirements. This contract has been checked against your firm's risk matrix and approved clause library.</p>
+                <div className="flex gap-2 mt-2">
+                  <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">Playbook Check: {(rv.risk_level==="LOW"||rv.risk_level==="MEDIUM")?"Pass":"Flagged"}</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">{(rv.missing_protections?.length||0)} missing standards</span>
+                </div>
+              </div>
+
+              {/* Annotated Contract */}
+              {contractText&&(<div className="card p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="card-header text-base">Annotated Contract</h3>
+                  <span className="text-[10px] px-2 py-0.5 bg-[#f5f3f0] rounded text-[#999]">Hover highlighted text for details</span>
+                </div>
+                <ContractViewer text={contractText} clauses={rv.clauses_found||[]}/>
+              </div>)}
+
+              {/* Flagged Clauses */}
+              <div className="card p-6 space-y-2">
+                <h3 className="card-header text-base mb-1">Flagged Clauses</h3>
+                {(rv.clauses_found||[]).map((cl,i)=>(<div key={i} className="bg-[#fafaf9] rounded-lg p-3 border border-[#e8e5e0] slide-in" style={{animationDelay:`${i*60}ms`}}>
+                  <div className="flex items-center gap-2 mb-1.5"><RiskBadge level={cl.risk_level}/><span className="text-sm font-medium text-[#333]">{cl.clause_type}</span><span className="text-[11px] text-[#bbb] ml-auto">{cl.section}</span></div>
+                  <p className="text-xs text-[#666] mb-1.5">{cl.explanation}</p>
+                  {cl.suggestion&&<p className="text-xs text-blue-600">Suggestion: {cl.suggestion}</p>}
+                  {cl.suggested_replacement&&(<details className="mt-2"><summary className="text-[11px] text-green-700 cursor-pointer hover:text-green-800">View replacement text</summary>
+                    <pre className="text-[11px] text-green-800 bg-green-50 rounded p-2 mt-1 whitespace-pre-wrap border border-green-200">{cl.suggested_replacement}</pre></details>)}
+                </div>))}
+              </div>
+
+              {/* Errors Found */}
+              {rv.errors_found?.length>0&&(<div className="card border-red-200 p-6 space-y-2">
+                <h3 className="card-header text-base text-red-700">Errors & Issues</h3>
+                {rv.errors_found.map((err,i)=>(<div key={i} className="bg-red-50 rounded-lg p-3 border border-red-200 slide-in">
+                  <div className="flex items-center gap-2 mb-1"><RiskBadge level={err.severity||"MEDIUM"}/><span className="text-xs text-red-700 font-medium">{err.type}</span></div>
+                  <p className="text-xs text-[#666]">{err.description}</p>
+                  {err.original_text&&<p className="text-[11px] text-[#999] mt-1 italic">"{err.original_text.substring(0,120)}"</p>}
+                </div>))}
+              </div>)}
+
+              {rv.missing_protections?.length>0&&(<div className="card border-amber-200 p-6 space-y-2">
+                <h3 className="card-header text-base text-amber-700">Missing Protections</h3>
+                {rv.missing_protections.map((mp,i)=>(<div key={i} className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                  <div className="flex items-center gap-2 mb-1"><RiskBadge level={mp.importance}/><span className="text-sm text-[#333]">{mp.clause_type}</span></div>
+                  <p className="text-xs text-[#666]">{mp.recommendation}</p>
+                  {mp.suggested_clause&&<pre className="text-[11px] text-amber-800 bg-amber-50 rounded p-2 mt-2 whitespace-pre-wrap border border-amber-200">{mp.suggested_clause}</pre>}
+                </div>))}
+              </div>)}
+
+              {rv.top_recommendations?.length>0&&(<div className="card p-6">
+                <h3 className="card-header text-base text-green-700 mb-2">Recommendations</h3>
+                {rv.top_recommendations.map((r,i)=>(<p key={i} className="text-sm text-[#555] mb-1"><span className="text-green-600 mr-2 font-medium">{i+1}.</span>{r}</p>))}
+              </div>)}
+
+              {rv.gdpr_compliance_notes&&(<div className="card p-5">
+                <h3 className="text-xs font-semibold text-blue-600 mb-1">GDPR Notes</h3>
+                <p className="text-xs text-[#666]">{rv.gdpr_compliance_notes}</p>
+              </div>)}
+
+              {/* Auto-Research by Legal Research Agent */}
+              {result?.auto_research?.length>0&&(<div className="card p-6 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></div>
+                  <h3 className="card-header text-base text-indigo-700">Auto-Research on Flagged Clauses</h3>
+                  <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">Legal Research Agent</span>
+                </div>
+                {result.auto_research.map((ar,i)=>(<div key={i} className="bg-[#fafaf9] rounded-lg p-4 border border-[#e8e5e0] slide-in" style={{animationDelay:`${i*80}ms`}}>
+                  <div className="flex items-center gap-2 mb-2"><RiskBadge level={ar.risk_level||"MEDIUM"}/><span className="text-sm font-medium text-[#333]">{ar.clause_type}</span></div>
+                  <p className="text-xs text-[#555] leading-relaxed mb-2">{ar.research}</p>
+                  {ar.applicable_laws?.length>0&&(<div className="flex flex-wrap gap-1 mb-2">{ar.applicable_laws.map((l,j)=>(<span key={j} className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded">{l.law||l}</span>))}</div>)}
+                  {ar.recommendation&&<p className="text-xs text-green-700 font-medium">→ {ar.recommendation}</p>}
+                </div>))}
+              </div>)}
+
+              {/* Suggested Next Actions */}
+              {result?.suggested_actions?.length>0&&(<div className="card p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+                  <h3 className="card-header text-base text-[#1a1a1a]">Suggested Next Steps</h3>
+                </div>
+                <div className="space-y-2">
+                  {result.suggested_actions.map((sa,i)=>(<div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-[#e8e5e0] hover:bg-[#fafaf9] transition">
+                    <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${sa.priority==='high'?'bg-red-500':sa.priority==='medium'?'bg-amber-500':'bg-[#999]'}`}>{i+1}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2"><span className="text-sm font-medium text-[#333]">{sa.action.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${sa.priority==='high'?'bg-red-100 text-red-700':sa.priority==='medium'?'bg-amber-100 text-amber-700':'bg-gray-100 text-[#666]'}`}>{sa.priority}</span></div>
+                      <p className="text-xs text-[#666] mt-0.5">{sa.reason}</p>
+                    </div>
+                  </div>))}
+                </div>
+              </div>)}
+
+              {/* Agents Used */}
+              {result?.agents_used?.length>1&&(<div className="card p-4">
+                <div className="flex items-center gap-2 text-[11px] text-[#999]">
+                  <span>Agents used:</span>
+                  {result.agents_used.map((a,i)=>(<span key={i} className="px-2 py-0.5 bg-[#f5f3f0] rounded text-[#666] font-medium">{a.replace(/_/g,' ')}</span>))}
+                </div>
+              </div>)}
+            </div>)}
+
+            {/* ── Drafting Results ── */}
+            {dr&&!result?.error&&(<div className="space-y-4 fade-in">
+              <div className="card p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div><h2 className="card-header text-xl">{dr.contract_title||"Generated Contract"}</h2>
+                    <p className="text-xs text-[#999] mt-1">Template: {dr.template_used||"custom"}</p></div>
+                  <button onClick={()=>{navigator.clipboard.writeText(dr.contract_text||"")}} className="btn-outline px-3 py-1 rounded text-xs transition">Copy</button>
+                </div>
+                <pre className="whitespace-pre-wrap text-[13px] text-[#333] bg-[#fafaf9] rounded-lg p-5 max-h-[600px] overflow-auto font-mono leading-relaxed border border-[#e8e5e0]">{dr.contract_text}</pre>
+              </div>
+              {dr.jurisdiction_notes&&(<div className="card p-5"><h3 className="text-xs font-semibold text-blue-600 mb-1">Jurisdiction</h3><p className="text-xs text-[#666]">{dr.jurisdiction_notes}</p></div>)}
+              {dr.custom_clauses_added?.length>0&&(<div className="card p-5"><h3 className="text-xs font-semibold text-indigo-600 mb-1">Custom Clauses</h3>{dr.custom_clauses_added.map((c,i)=><p key={i} className="text-xs text-[#666]">&bull; {c}</p>)}</div>)}
+              {qa&&(<div className="card border-green-200 p-6">
+                <div className="flex items-center gap-3 mb-2"><h3 className="card-header text-base text-green-700">QA Review</h3><ScoreRing score={qa.overall_risk_score||0} size={50}/></div>
+                <p className="text-xs text-[#666]">{qa.executive_summary}</p>
+              </div>)}
+
+              {/* Partner Approval Status */}
+              {result?.approval&&(<div className={`card p-5 border-l-4 ${result.approval.status==='approved'?'border-l-green-500':'border-l-amber-500'}`}>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${result.approval.status==='pending'?'bg-amber-100 text-amber-800':'bg-green-100 text-green-800'}`}>
+                    <span className={`w-2 h-2 rounded-full ${result.approval.status==='pending'?'bg-amber-500 animate-pulse':'bg-green-500'}`}/>
+                    {result.approval.status==='pending'?'Awaiting Partner Approval':'Approved'}
+                  </span>
+                  <span className="text-[11px] text-[#999]">ID: {result.approval.approval_id}</span>
+                </div>
+                <p className="text-sm text-[#555]">{result.approval.message}</p>
+                {result.approval.slack_sent&&<p className="text-[11px] text-green-600 mt-1">Slack notification sent to partner channel</p>}
+                {result.approval.slack_error&&<p className="text-[11px] text-red-500 mt-1">Slack error: {result.approval.slack_error}</p>}
+                {!result.approval.slack_sent&&!result.approval.slack_error&&<p className="text-[11px] text-amber-600 mt-1">Slack not configured — approve via dashboard or API</p>}
+
+                {result.approval.status==='pending'&&(<div className="flex gap-2 mt-3">
+                  <button onClick={async()=>{try{const r=await fetch(`${API}/api/approvals/${result.approval.approval_id}/approve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:'Approved via dashboard'})});const d=await r.json();if(d.status==='approved'){setResult(p=>({...p,approval:{...p.approval,status:'approved'},status:'approved'}))}}catch(e){console.error(e)}}}
+                    className="px-4 py-2 bg-green-700 text-white rounded-lg text-xs font-medium hover:bg-green-800 transition">Approve & Send to Client</button>
+                  <button onClick={async()=>{try{const r=await fetch(`${API}/api/approvals/${result.approval.approval_id}/reject`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:'Rejected via dashboard'})});const d=await r.json();if(d.status==='rejected'){setResult(p=>({...p,approval:{...p.approval,status:'rejected'},status:'rejected'}))}}catch(e){console.error(e)}}}
+                    className="px-4 py-2 bg-white text-red-600 rounded-lg text-xs font-medium border border-red-200 hover:bg-red-50 transition">Reject</button>
+                </div>)}
+              </div>)}
+            </div>)}
+
+            {/* ── Research Results ── */}
+            {rs&&!result?.error&&(<div className="space-y-4 fade-in">
+              <div className="card p-6">
+                <h2 className="card-header text-xl mb-2">Research Analysis</h2>
+                <div className="flex gap-2 mb-3"><RiskBadge level={rs.confidence_level||"MEDIUM"}/><span className="text-xs text-[#999]">{rs.jurisdiction}</span>
+                  {rs.rag_sources_used>0&&<span className="text-xs text-indigo-600">{rs.rag_sources_used} RAG sources</span>}</div>
+                <p className="text-sm text-[#444] leading-relaxed whitespace-pre-wrap">{rs.legal_analysis}</p>
+              </div>
+              {rs.applicable_laws?.length>0&&(<div className="card p-6">
+                <h3 className="card-header text-base text-blue-700 mb-2">Applicable Laws</h3>
+                {rs.applicable_laws.map((l,i)=>(<div key={i} className="mb-2 bg-[#fafaf9] rounded p-2.5 border border-[#e8e5e0]">
+                  <span className="text-sm font-medium text-[#333]">{l.law}</span>{l.section&&<span className="text-xs text-[#999] ml-2">{l.section}</span>}
+                  <p className="text-xs text-[#666] mt-0.5">{l.relevance}</p></div>))}
+              </div>)}
+              {rs.key_findings?.length>0&&(<div className="card p-6">
+                <h3 className="card-header text-base text-green-700 mb-2">Key Findings</h3>
+                {rs.key_findings.map((f,i)=><p key={i} className="text-xs text-[#555] mb-1">&bull; {f}</p>)}
+              </div>)}
+              {rs.recommendations?.length>0&&(<div className="card p-6">
+                <h3 className="card-header text-base text-indigo-700 mb-2">Recommendations</h3>
+                {rs.recommendations.map((r,i)=><p key={i} className="text-xs text-[#555] mb-1">{i+1}. {r}</p>)}
+              </div>)}
+              {rs.disclaimer&&<p className="text-[11px] text-[#bbb] italic px-1">{rs.disclaimer}</p>}
+            </div>)}
+
+            {/* Audit Trail */}
+            {result?.audit_trail?.length>0&&(<div className="card p-6"><AuditTrail trail={result.audit_trail}/></div>)}
+            {result?.id&&(<div className="card p-3 flex justify-between text-[11px] text-[#999]">
+              <span>Matter <code className="text-[#666] font-medium">{result.id}</code></span><span className="text-green-600">{result.status}</span></div>)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── APP ROOT ───────────── */
+function App(){
+  const[page,setPage]=useState("landing");
+  if(page==="landing")return <LandingPage onEnter={()=>setPage("dashboard")}/>;
+  return <Dashboard onBack={()=>setPage("landing")}/>;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
