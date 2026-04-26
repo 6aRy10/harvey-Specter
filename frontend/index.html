@@ -870,9 +870,11 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
     if(!approveData?.matter_id||approveLoading)return;
     setApproveLoading(true);
     try{
-      await fetch(`${API}/api/approvals/${approveData.matter_id}/${decision.toLowerCase()}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({comment:approveComment})});
+      const r=await fetch(`${API}/api/approvals/${approveData.matter_id}/${decision.toLowerCase()}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({comment:approveComment})});
+      if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.detail||`Server error ${r.status}`);}
       setApproveDecided(decision);
-    }catch(e){}setApproveLoading(false);
+    }catch(e){alert(`Could not send decision: ${e.message}`);}
+    setApproveLoading(false);
   };
 
   if(approveData&&!approveDecided){

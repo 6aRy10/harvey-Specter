@@ -906,8 +906,6 @@ def _exec_decision_notify(matter_id: str, decision: str, comment: str, emoji: st
 @app.post("/api/approvals/{matter_id}/approve")
 async def approve_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
     """Executive approves the matter."""
-    if matter_id not in _pipeline_store:
-        raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
     _exec_decision_notify(matter_id, "APPROVED", req.comment or "", "✅")
     return {"matter_id": matter_id, "decision": "APPROVED", "comment": req.comment}
 
@@ -915,8 +913,6 @@ async def approve_matter(matter_id: str, req: ApprovalDecisionRequest = Approval
 @app.post("/api/approvals/{matter_id}/reject")
 async def reject_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
     """Executive rejects the matter."""
-    if matter_id not in _pipeline_store:
-        raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
     _exec_decision_notify(matter_id, "REJECTED", req.comment or "", "❌")
     return {"matter_id": matter_id, "decision": "REJECTED", "comment": req.comment}
 
@@ -924,8 +920,6 @@ async def reject_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalD
 @app.post("/api/approvals/{matter_id}/negotiate")
 async def negotiate_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
     """Executive sends back for changes."""
-    if matter_id not in _pipeline_store:
-        raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
     _exec_decision_notify(matter_id, "NEGOTIATE", req.comment or "", "✏️")
     return {"matter_id": matter_id, "decision": "NEGOTIATE", "comment": req.comment}
 
