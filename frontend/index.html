@@ -204,13 +204,16 @@ function ContractViewer({text,clauses=[]}){
   const sorted=[...clauses].sort((a,b)=>(b.original_text||"").length-(a.original_text||"").length);
   sorted.forEach(cl=>{
     if(!cl.original_text)return;
-    const esc=cl.original_text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
+    const snippet=cl.original_text.substring(0,80).trim();
+    const esc=snippet.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'[\\s\\S]{0,4}');
     try{
-      const re=new RegExp(`(${esc.substring(0,150)})`,"gi");
+      const re=new RegExp(`(${esc}[^<]{0,200})`,"i");
       const l=(cl.risk_level||"LOW").toLowerCase();
       const colors={high:"background:#fee2e2;border-bottom:2px solid #ef4444;cursor:pointer",medium:"background:#fef9c3;border-bottom:2px solid #eab308;cursor:pointer",low:"background:#dcfce7;border-bottom:2px solid #22c55e;cursor:pointer"};
       const style=colors[l]||colors.low;
-      html=html.replace(re,`<mark style="${style};border-radius:2px;padding:1px 2px" title="⚠️ ${cl.clause_type} (${(cl.risk_level||"").toUpperCase()}): ${(cl.explanation||"").substring(0,120)}">$1</mark>`);
+      const tooltip=(cl.clause_type||"")+" ("+(cl.risk_level||"").toUpperCase()+"): "+(cl.explanation||"").substring(0,120);
+      if(!html.includes(`data-clause="${cl.clause_type}"`))
+        html=html.replace(re,`<mark data-clause="${cl.clause_type}" style="${style};border-radius:2px;padding:1px 2px" title="${tooltip.replace(/"/g,"'")}">$1</mark>`);
     }catch(e){}
   });
   return(
@@ -356,6 +359,27 @@ function Dashboard({onBack}){
     finally{clearTimeout(timer);setLoading(false);}
   };
 
+  const autoReview=async(text,label)=>{
+    if(!text||text.trim().length<50)return;
+    setIntakeStep(2);
+    setChatMsgs(p=>[...p,{role:"ai",text:`Annotating "${label}"...`,ts:new Date().toLocaleTimeString(),loading:true}]);
+    setLoading(true);setResult(null);
+    const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),90000);
+    try{
+      const r=await fetch(`${API}/api/review`,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contract_text:text}),signal:ctrl.signal});
+      if(!r.ok)throw new Error(`Review error ${r.status}`);
+      const d=await r.json();
+      setResult(d);
+      const n=(d?.agent_results?.contract_review?.clauses_found||[]).length;
+      setChatMsgs(p=>p.filter(m=>!m.loading));
+      setChatMsgs(p=>[...p,{role:"ai",text:`✅ Annotated "${label}" — ${n} clause${n!==1?"s":""} flagged. Scroll right to see annotations.`,ts:new Date().toLocaleTimeString()}]);
+    }catch(err){
+      setChatMsgs(p=>p.filter(m=>!m.loading));
+      setChatMsgs(p=>[...p,{role:"ai",text:"Review error: "+err.message,ts:new Date().toLocaleTimeString()}]);
+    }finally{clearTimeout(t);setLoading(false);}
+  };
+
   const runPipeline=async()=>{
     if(!contractText){alert("Upload a contract first.");return;}
     setPipelineRunning(true);setPipelineResult(null);setPipelineAnimStep(1);
@@ -372,7 +396,7 @@ function Dashboard({onBack}){
     finally{clearInterval(animInterval);setPipelineRunning(false);}
   };
 
-  const loadSample=()=>{setContractText(`NON-DISCLOSURE AGREEMENT
+  const loadSample=async()=>{const sampleText=`NON-DISCLOSURE AGREEMENT
 
 This Non-Disclosure Agreement ("Agreement") is entered into as of January 15, 2026
 (the "Effective Date") by and between:
@@ -430,7 +454,7 @@ the State of Delaware, USA, without regard to its conflict of laws provisions.
 
 9. DISPUTE RESOLUTION
 Any disputes arising under this Agreement shall be resolved exclusively in the
-state and federal courts located in Wilmington, Delaware.`);};
+state and federal courts located in Wilmington, Delaware.`;setContractText(sampleText);await autoReview(sampleText,"Sample_NDA.txt");};
 
   const handleFile=async(e)=>{
     const f=e.target.files[0];if(!f)return;
@@ -438,27 +462,34 @@ state and federal courts located in Wilmington, Delaware.`);};
       setChatMsgs(p=>[...p,{role:"ai",text:`Reading "${f.name}"...`,ts:new Date().toLocaleTimeString(),loading:true}]);
       try{
         const form=new FormData();form.append("file",f);
-        const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),60000);
+        const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),90000);
         const r=await fetch(`${API}/api/extract-pdf`,{method:"POST",body:form,signal:ctrl.signal});
         clearTimeout(t);
         const d=await r.json();
         setChatMsgs(p=>p.filter(m=>!m.loading));
         if(d.error==="scanned_pdf"){
-          setChatMsgs(p=>[...p,{role:"ai",text:`⚠️ "${f.name}" is a scanned/image PDF — text can't be extracted automatically. Please export it as .txt or copy-paste the contract text into a .txt file and upload that instead.`,ts:new Date().toLocaleTimeString()}]);
+          setChatMsgs(p=>[...p,{role:"ai",text:`⚠️ "${f.name}" is a scanned/image PDF with no extractable text.`,ts:new Date().toLocaleTimeString()}]);
         } else if(d.text){
+          const method=d.method==="ocr"?" via OCR":"";
+          setChatMsgs(p=>[...p,{role:"ai",text:`📄 ${d.pages} pages extracted${method}. Running review...`,ts:new Date().toLocaleTimeString()}]);
           setContractText(d.text);
-          const method=d.method==="ocr"?" (OCR — AI vision)":"";
-          setChatMsgs(p=>[...p,{role:"ai",text:"✅ Extracted "+d.pages+" pages ("+d.chars.toLocaleString()+" chars) from \""+f.name+"\""+method+". Ready to review.",ts:new Date().toLocaleTimeString()}]);
+          await autoReview(d.text,f.name);
         }
       }catch(err){
         setChatMsgs(p=>[...p.filter(m=>!m.loading),{role:"ai",text:"Upload error: "+err.message,ts:new Date().toLocaleTimeString()}]);
       }
     } else {
-      const r=new FileReader();r.onload=ev=>setContractText(ev.target.result);r.readAsText(f);
+      const r=new FileReader();
+      r.onload=async ev=>{
+        const text=ev.target.result;
+        setContractText(text);
+        await autoReview(text,f.name);
+      };
+      r.readAsText(f);
     }
   };
 
-  const loadBMW=async()=>{try{const r=await fetch('demo/bmw_dpa_contract.txt');if(r.ok){setContractText(await r.text())}else{setContractText("Failed to load BMW DPA")}}catch(e){setContractText("Failed to load: "+e.message)}};
+  const loadBMW=async()=>{try{const r=await fetch('demo/bmw_dpa_contract.txt');if(r.ok){const t=await r.text();setContractText(t);await autoReview(t,"BMW_DPA_v2.txt");}else{setContractText("Failed to load BMW DPA")}}catch(e){setContractText("Failed to load: "+e.message)}};
 
   // Chat send — multilingual with citations
   const sendChat=async()=>{
