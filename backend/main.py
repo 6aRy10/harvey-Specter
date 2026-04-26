@@ -142,43 +142,45 @@ async def set_slack_webhook(req: SlackSettingsRequest):
     return {"status": "ok", "slack_configured": True, "message": "Slack webhook saved."}
 
 
-# In-memory multi-target store  { name: webhook_url }
+# In-memory multi-target store  { name: {"url": webhook_url, "role": "legal_team"|"executive"|"general"} }
 _slack_targets: dict = {}
+
+# Pipeline result store  { matter_id: full_result_dict }
+_pipeline_store: dict = {}
 
 
 class SlackTargetRequest(BaseModel):
     name: str
     webhook_url: str
+    role: str = "general"  # "legal_team" | "executive" | "general"
 
 
 @app.get("/api/settings/slack-targets")
 async def list_slack_targets():
     """List all named Slack webhook targets."""
     targets = [
-        {"name": k, "webhook_preview": v[:40] + "..." if len(v) > 40 else v}
+        {"name": k, "webhook_preview": v["url"][:40] + "..." if len(v["url"]) > 40 else v["url"], "role": v.get("role", "general")}
         for k, v in _slack_targets.items()
     ]
-    # Also include primary if set
     primary = os.getenv("SLACK_WEBHOOK_URL", "")
     if primary and "Primary" not in _slack_targets:
-        targets = [{"name": "Primary", "webhook_preview": primary[:40] + "..."}] + targets
+        targets = [{"name": "Primary", "webhook_preview": primary[:40] + "...", "role": "general"}] + targets
     return {"targets": targets}
 
 
 @app.post("/api/settings/slack-targets")
 async def add_slack_target(req: SlackTargetRequest):
-    """Add a named Slack webhook target (e.g. Dr. Peter → webhook URL)."""
+    """Add a named Slack webhook target with a role."""
     url = req.webhook_url.strip()
     name = req.name.strip()
+    role = req.role.strip() or "general"
     if not name:
         raise HTTPException(status_code=400, detail="Name is required")
     if not url.startswith("https://hooks.slack.com/"):
         raise HTTPException(status_code=400, detail="Must be a valid Slack webhook URL")
-    _slack_targets[name] = url
-    # Set as primary if first one
+    _slack_targets[name] = {"url": url, "role": role}
     if not os.getenv("SLACK_WEBHOOK_URL"):
         os.environ["SLACK_WEBHOOK_URL"] = url
-    # Persist to env
     env_path = Path(__file__).parent.parent / ".env"
     try:
         lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
@@ -188,7 +190,7 @@ async def add_slack_target(req: SlackTargetRequest):
         env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
     except Exception:
         pass
-    return {"status": "ok", "name": name, "targets_count": len(_slack_targets)}
+    return {"status": "ok", "name": name, "role": role, "targets_count": len(_slack_targets)}
 
 
 @app.delete("/api/settings/slack-targets/{name}")
@@ -197,6 +199,26 @@ async def remove_slack_target(name: str):
     if name in _slack_targets:
         del _slack_targets[name]
     return {"status": "ok", "removed": name}
+
+
+def _get_webhook_by_role(role: str) -> str:
+    """Find first webhook URL matching a role."""
+    for v in _slack_targets.values():
+        if isinstance(v, dict) and v.get("role") == role:
+            return v["url"]
+    return ""
+
+
+def _send_slack_raw(webhook_url: str, message: dict) -> bool:
+    """Post a raw Slack block message. Returns True on success."""
+    if not webhook_url:
+        return False
+    try:
+        import requests as _req
+        r = _req.post(webhook_url, json=message, headers={"Content-Type": "application/json"}, timeout=10)
+        return r.status_code == 200
+    except Exception:
+        return False
 
 
 class SlackTestRequest(BaseModel):
@@ -692,26 +714,39 @@ async def run_pipeline(req: PipelineRequest):
         memo = json.loads(memo_resp.choices[0].message.content)
         step(7, "qa_agent", "memo_complete", f"Recommendation: {memo.get('recommendation','?')}")
 
-        # ── STEP 8: Slack approval notification ───────────────────────
-        step(8, "approval_agent", "sending_slack_notification")
+        # ── STEP 8: Send technical memo to LEGAL TEAM for review ──────────
+        step(8, "approval_agent", "notifying_legal_team")
         memo_text = memo.get("memo", "")
-        approval_result = slack.send_approval_request(
-            matter_id=matter_id,
-            doc_type="dpa_review_memo",
-            content=memo_text,
-            summary=f"[{risk.get('risk_level','?')} RISK] {req.matter_name} — Recommendation: {memo.get('recommendation','?')}. GDPR score: {gdpr.get('gdpr_score','?')}/10. {len(redlines.get('redlines',[]))} redlines ready.",
-            recipient=req.assignee or "Dr. Peter",
-        )
-        approval_id = approval_result.get("approval_id", "N/A")
-        step(8, "approval_agent", "slack_sent", f"Approval ID: {approval_id} — Sent to {req.assignee}")
+        legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_URL", "")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5500")
+        simplify_url = f"{frontend_url}?action=simplify&matter_id={matter_id}"
+        legal_msg = {
+            "blocks": [
+                {"type": "header", "text": {"type": "plain_text", "text": f"📌 Legal Team Review Required — {matter_id}", "emoji": True}},
+                {"type": "section", "fields": [
+                    {"type": "mrkdwn", "text": f"*Matter:*\n{req.matter_name}"},
+                    {"type": "mrkdwn", "text": f"*Risk Level:*\n{risk.get('risk_level','?')}"},
+                    {"type": "mrkdwn", "text": f"*GDPR Score:*\n{gdpr.get('gdpr_score','?')}/10"},
+                    {"type": "mrkdwn", "text": f"*Recommendation:*\n{memo.get('recommendation','?')}"},
+                ]},
+                {"type": "divider"},
+                {"type": "section", "text": {"type": "mrkdwn", "text": f"*QA Memo (Technical):*\n{memo_text[:600]}..."}},
+                {"type": "divider"},
+                {"type": "section", "text": {"type": "mrkdwn",
+                    "text": f"✅ *Review & forward to executive:*\nCall `POST /api/pipeline/{matter_id}/simplify` to generate a plain-English executive summary and send it directly to Mr. Peter.\n\nOr use the dashboard: `GET /api/pipeline/{matter_id}/status`"}},
+                {"type": "context", "elements": [{"type": "mrkdwn", "text": f"Matter ID: `{matter_id}` | Harveyy AI | {datetime.now().strftime('%Y-%m-%d %H:%M')} UTC"}]}
+            ]
+        }
+        legal_sent = _send_slack_raw(legal_webhook, legal_msg)
+        step(8, "approval_agent", "legal_team_notified", f"Legal Slack {'sent' if legal_sent else 'failed (no legal_team webhook)'} | Matter {matter_id}")
 
-        # ── STEPS 9-10: Pending approval + audit close ────────────────
-        step(9, "system", "pending_executive_approval", f"Matter {matter_id} awaiting sign-off by {req.assignee}")
-        step(10, "system", "audit_trail_finalised", f"Pipeline complete — {len(audit)} steps logged")
+        # ── STEPS 9-10: Pending legal review + audit ────────────────────
+        step(9, "system", "awaiting_legal_review", f"Matter {matter_id} pending legal team sign-off before executive")
+        step(10, "system", "audit_trail_open", f"Pipeline complete — awaiting legal → executive approval chain")
 
-        return {
+        result = {
             "matter_id": matter_id,
-            "status": "pending_approval",
+            "status": "awaiting_legal_review",
             "pipeline_complete": True,
             "steps_completed": 10,
             "intake": intake,
@@ -720,13 +755,116 @@ async def run_pipeline(req: PipelineRequest):
             "risk": risk,
             "redlines": redlines,
             "memo": memo,
-            "approval_id": approval_id,
+            "legal_slack_sent": legal_sent,
             "audit_trail": audit,
         }
+        _pipeline_store[matter_id] = result
+        return result
 
     except Exception as e:
         step(0, "system", "pipeline_error", str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Legal Team → Simplify & Forward to Executive ───
+@app.get("/api/pipeline/{matter_id}/status")
+async def pipeline_status(matter_id: str):
+    """Get stored pipeline result for a matter."""
+    data = _pipeline_store.get(matter_id)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
+    return data
+
+
+class SimplifyRequest(BaseModel):
+    legal_notes: str = ""  # Optional corrections from legal team
+
+
+@app.post("/api/pipeline/{matter_id}/simplify")
+async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRequest()):
+    """
+    Legal team calls this after reviewing the technical memo.
+    GPT rewrites into plain English for the executive approver,
+    then sends to the executive Slack target.
+    """
+    data = _pipeline_store.get(matter_id)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found in pipeline store")
+
+    memo_text = data.get("memo", {}).get("memo", "")
+    risk = data.get("risk", {})
+    gdpr = data.get("gdpr", {})
+    redlines = data.get("redlines", {})
+    legal_notes = req.legal_notes.strip()
+
+    correction_block = f"\n\nLegal team corrections/notes:\n{legal_notes}" if legal_notes else ""
+
+    # Rewrite in plain English for non-lawyer executive
+    simplify_resp = openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": (
+                "You are a senior legal officer translating a technical legal memo into plain English "
+                "for a non-lawyer executive (Mr. Peter). Use simple language, no legal jargon. "
+                "Structure it as: 1) What this contract is about (2 sentences), "
+                "2) The main risks in plain language, 3) What the legal team recommends and why, "
+                "4) What Mr. Peter needs to decide (Approve / Reject / Negotiate). "
+                "Return JSON: {\"executive_summary\":\"...\",\"plain_risks\":[\"...\"],"
+                "\"recommendation\":\"APPROVE|REJECT|NEGOTIATE\",\"decision_needed\":\"...\"}"
+            )},
+            {"role": "user", "content": (
+                f"Technical memo:\n{memo_text}\n\n"
+                f"Risk level: {risk.get('risk_level','?')}, Score: {risk.get('risk_score','?')}/10\n"
+                f"GDPR score: {gdpr.get('gdpr_score','?')}/10\n"
+                f"Redlines proposed: {len(redlines.get('redlines',[]))}\n"
+                f"{correction_block}"
+            )}
+        ],
+        response_format={"type": "json_object"}, max_tokens=500, temperature=0.3
+    )
+    simplified = json.loads(simplify_resp.choices[0].message.content)
+
+    # Send plain-English version to executive (Mr. Peter)
+    exec_webhook = _get_webhook_by_role("executive") or os.getenv("SLACK_WEBHOOK_URL", "")
+    exec_summary = simplified.get("executive_summary", "")
+    plain_risks = simplified.get("plain_risks", [])
+    decision = simplified.get("decision_needed", "")
+    recommendation = simplified.get("recommendation", "?")
+
+    rec_emoji = {"APPROVE": "✅", "REJECT": "❌", "NEGOTIATE": "⚠️"}.get(recommendation, "❓")
+
+    exec_msg = {
+        "blocks": [
+            {"type": "header", "text": {"type": "plain_text", "text": f"{rec_emoji} Contract Decision Required — {matter_id}", "emoji": True}},
+            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Hi Mr. Peter,*\n\n{exec_summary}"}},
+            {"type": "divider"},
+            {"type": "section", "text": {"type": "mrkdwn",
+                "text": "*Key risks (in plain language):*\n" + "\n".join(f"• {r}" for r in plain_risks[:4])}},
+            {"type": "divider"},
+            {"type": "section", "text": {"type": "mrkdwn",
+                "text": f"*What the legal team recommends:* {rec_emoji} *{recommendation}*\n\n*What you need to decide:* {decision}"}},
+            {"type": "section", "text": {"type": "mrkdwn",
+                "text": f"✏️ To approve or reject, reply here or call:\n`POST /api/approvals/{matter_id}/approve` or `/reject`"}},
+            {"type": "context", "elements": [{"type": "mrkdwn",
+                "text": f"Reviewed by Legal Team | Matter `{matter_id}` | Harveyy AI | {datetime.now().strftime('%Y-%m-%d %H:%M')} UTC"}]}
+        ]
+    }
+    exec_sent = _send_slack_raw(exec_webhook, exec_msg)
+
+    # Update stored pipeline data
+    _pipeline_store[matter_id]["simplified_memo"] = simplified
+    _pipeline_store[matter_id]["status"] = "awaiting_executive_approval"
+    _pipeline_store[matter_id]["executive_slack_sent"] = exec_sent
+    if legal_notes:
+        _pipeline_store[matter_id]["legal_notes"] = legal_notes
+
+    return {
+        "matter_id": matter_id,
+        "status": "awaiting_executive_approval",
+        "simplified": simplified,
+        "executive_slack_sent": exec_sent,
+        "message": f"Plain-English summary sent to Mr. Peter {'successfully' if exec_sent else '(no executive webhook configured)'}"
+    }
 
 
 # ─── Templates ───
