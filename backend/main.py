@@ -598,7 +598,7 @@ async def run_pipeline(req: PipelineRequest):
     matter_id = f"DPA-{uuid.uuid4().hex[:6].upper()}"
     audit = []
 
-    def step(num, agent, action, details=""):
+    def log_step(num, agent, action, details=""):
         entry = {"step": num, "agent": agent, "action": action,
                  "details": details, "timestamp": datetime.now().isoformat()}
         audit.append(entry)
@@ -609,10 +609,10 @@ async def run_pipeline(req: PipelineRequest):
         text = req.contract_text[:MAX_CHARS] if len(req.contract_text) > MAX_CHARS else req.contract_text
 
         # ── STEP 1: Received ──────────────────────────────────────────
-        step(1, "system", "contract_received", f"{len(req.contract_text):,} chars ingested")
+        log_step(1, "system", "contract_received", f"{len(req.contract_text):,} chars ingested")
 
         # ── STEP 2: Intake — classify matter ─────────────────────────
-        step(2, "intake_agent", "classifying")
+        log_step(2, "intake_agent", "classifying")
         intake_resp = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -622,11 +622,11 @@ async def run_pipeline(req: PipelineRequest):
             response_format={"type": "json_object"}, max_tokens=200, temperature=0.1
         )
         intake = json.loads(intake_resp.choices[0].message.content)
-        step(2, "intake_agent", "classified", f"{intake.get('contract_type','DPA')} — {intake.get('urgency','MEDIUM')} urgency")
+        log_step(2, "intake_agent", "classified", f"{intake.get('contract_type','DPA')} — {intake.get('urgency','MEDIUM')} urgency")
 
-        # ── STEPS 3 + 4: Clause extraction + GDPR compliance (PARALLEL) ──
-        step(3, "clause_agent", "extracting_clauses")
-        step(4, "compliance_agent", "gdpr_check_started")
+        # ── STEPS 3 + 4: Clause extraction + GDPR compliance (PARALLEL)
+        log_step(3, "clause_agent", "extracting_clauses")
+        log_step(4, "compliance_agent", "gdpr_check_started")
 
         async def extract_clauses():
             r = openai_client.chat.completions.create(
@@ -671,11 +671,11 @@ async def run_pipeline(req: PipelineRequest):
         )
         clauses = json.loads(clauses_result.choices[0].message.content)
         gdpr = json.loads(gdpr_result.choices[0].message.content)
-        step(3, "clause_agent", "clauses_extracted", f"{len(clauses.get('clauses',[]))} key clauses found")
-        step(4, "compliance_agent", "gdpr_check_complete", f"GDPR score: {gdpr.get('gdpr_score','N/A')}/10 — {len(gdpr.get('issues',[]))} issues")
+        log_step(3, "clause_agent", "clauses_extracted", f"{len(clauses.get('clauses',[]))} key clauses found")
+        log_step(4, "compliance_agent", "gdpr_check_complete", f"GDPR score: {gdpr.get('gdpr_score','N/A')}/10 — {len(gdpr.get('issues',[]))} issues")
 
         # ── STEP 5: Risk scoring ──────────────────────────────────────
-        step(5, "risk_agent", "scoring")
+        log_step(5, "risk_agent", "scoring")
         risk_resp = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -685,11 +685,13 @@ async def run_pipeline(req: PipelineRequest):
             response_format={"type": "json_object"}, max_tokens=300, temperature=0.1
         )
         risk = json.loads(risk_resp.choices[0].message.content)
-        step(5, "risk_agent", "risk_scored", f"Risk: {risk.get('risk_score','?')}/10 — {risk.get('risk_level','?')} — Safe to sign: {risk.get('safe_to_sign','?')}")
+        log_step(5, "risk_agent", "risk_scored", f"Risk: {risk.get('risk_score','?')}/10 — {risk.get('risk_level','?')} — Safe to sign: {risk.get('safe_to_sign','?')}")
 
-        # ── STEP 6: Redlines ─────────────────────────────────────────
-        step(6, "drafting_agent", "drafting_redlines")
+        # ── STEP 6: Redlines
+        log_step(6, "drafting_agent", "drafting_redlines")
         high_risk = [c for c in clauses.get("clauses", []) if c.get("risk") == "HIGH"]
+        if not high_risk:  # fallback: take top 3 clauses regardless of risk
+            high_risk = clauses.get("clauses", [])[:3]
         redlines_resp = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -699,10 +701,10 @@ async def run_pipeline(req: PipelineRequest):
             response_format={"type": "json_object"}, max_tokens=600, temperature=0.2
         )
         redlines = json.loads(redlines_resp.choices[0].message.content)
-        step(6, "drafting_agent", "redlines_ready", f"{len(redlines.get('redlines',[]))} redlines proposed")
+        log_step(6, "drafting_agent", "redlines_ready", f"{len(redlines.get('redlines',[]))} redlines proposed")
 
         # ── STEP 7: QA Memo ───────────────────────────────────────────
-        step(7, "qa_agent", "generating_memo")
+        log_step(7, "qa_agent", "generating_memo")
         memo_resp = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -712,10 +714,10 @@ async def run_pipeline(req: PipelineRequest):
             response_format={"type": "json_object"}, max_tokens=500, temperature=0.2
         )
         memo = json.loads(memo_resp.choices[0].message.content)
-        step(7, "qa_agent", "memo_complete", f"Recommendation: {memo.get('recommendation','?')}")
+        log_step(7, "qa_agent", "memo_complete", f"Recommendation: {memo.get('recommendation','?')}")
 
-        # ── STEP 8: Send technical memo to LEGAL TEAM for review ──────────
-        step(8, "approval_agent", "notifying_legal_team")
+        # ── STEP 8: Send technical memo to LEGAL TEAM for review
+        log_step(8, "approval_agent", "notifying_legal_team")
         memo_text = memo.get("memo", "")
         legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_URL", "")
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5500")
@@ -738,11 +740,11 @@ async def run_pipeline(req: PipelineRequest):
             ]
         }
         legal_sent = _send_slack_raw(legal_webhook, legal_msg)
-        step(8, "approval_agent", "legal_team_notified", f"Legal Slack {'sent' if legal_sent else 'failed (no legal_team webhook)'} | Matter {matter_id}")
+        log_step(8, "approval_agent", "legal_team_notified", f"Legal Slack {'sent' if legal_sent else 'failed (no legal_team webhook)'} | Matter {matter_id}")
 
-        # ── STEPS 9-10: Pending legal review + audit ────────────────────
-        step(9, "system", "awaiting_legal_review", f"Matter {matter_id} pending legal team sign-off before executive")
-        step(10, "system", "audit_trail_open", f"Pipeline complete — awaiting legal → executive approval chain")
+        # ── STEPS 9-10: Pending legal review + audit
+        log_step(9, "system", "awaiting_legal_review", f"Matter {matter_id} pending legal team sign-off before executive")
+        log_step(10, "system", "audit_trail_open", f"Pipeline complete — awaiting legal → executive approval chain")
 
         result = {
             "matter_id": matter_id,
@@ -762,7 +764,7 @@ async def run_pipeline(req: PipelineRequest):
         return result
 
     except Exception as e:
-        step(0, "system", "pipeline_error", str(e))
+        log_step(0, "system", "pipeline_error", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

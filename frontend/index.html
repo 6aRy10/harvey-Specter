@@ -428,7 +428,7 @@ function Dashboard({onBack}){
     const label=labelOverride||"contract";
     if(!text||text.trim().length<50){if(!textOverride)alert("Upload a contract first.");return;}
     setIntakeStep(2);
-    setPipelineRunning(true);setPipelineResult(null);setPipelineAnimStep(1);setResult(null);
+    setPipelineRunning(true);setPipelineResult(null);setPipelineAnimStep(1);setResult(null);setSimplifyResult(null);setLegalNotes("");
     setChatMsgs(p=>[...p,{role:"ai",text:`🚀 Starting 10-step pipeline for "${label}"...`,ts:new Date().toLocaleTimeString()}]);
     let step=1;
     const stepLabels=["Receiving contract","Intake classification","Clause extraction","GDPR compliance check","Risk scoring","Drafting redlines","QA memo","Slack approval","Awaiting sign-off","Audit trail"];
@@ -465,7 +465,8 @@ function Dashboard({onBack}){
       const risk=d.risk?.risk_level||"?";
       const nc=(d.clauses?.clauses||[]).length;
       const nr=(d.redlines?.redlines||[]).length;
-      setChatMsgs(p=>[...p,{role:"ai",text:`✅ Pipeline complete — Matter ${d.matter_id} | ${risk} RISK | ${nc} clauses | ${nr} redlines | Recommendation: ${rec} | Slack sent to Dr. Peter`,ts:new Date().toLocaleTimeString()}]);
+      const legalSent=d.legal_slack_sent;
+      setChatMsgs(p=>[...p,{role:"ai",text:`✅ Pipeline complete — Matter ${d.matter_id} | ${risk} RISK | ${nc} clauses | ${nr} redlines | Rec: ${rec} | ${legalSent?"⚖️ Legal team notified via Slack — review panel below":"⚖️ Legal review panel ready (add Legal Team webhook in Settings)"}`,ts:new Date().toLocaleTimeString()}]);
     }catch(err){
       setPipelineResult({error:err.message});
       setChatMsgs(p=>p.filter(m=>!m.pipeline));
