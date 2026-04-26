@@ -205,10 +205,24 @@ function ContractViewer({text,clauses=[]}){
   sorted.forEach(cl=>{
     if(!cl.original_text)return;
     const esc=cl.original_text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
-    try{const re=new RegExp(`(${esc.substring(0,150)})`,"gi");const l=(cl.risk_level||"LOW").toLowerCase();
-    html=html.replace(re,`<span class="highlight-${l}" title="${cl.clause_type}: ${(cl.explanation||'').substring(0,120)}">$1</span>`);}catch(e){}
+    try{
+      const re=new RegExp(`(${esc.substring(0,150)})`,"gi");
+      const l=(cl.risk_level||"LOW").toLowerCase();
+      const colors={high:"background:#fee2e2;border-bottom:2px solid #ef4444;cursor:pointer",medium:"background:#fef9c3;border-bottom:2px solid #eab308;cursor:pointer",low:"background:#dcfce7;border-bottom:2px solid #22c55e;cursor:pointer"};
+      const style=colors[l]||colors.low;
+      html=html.replace(re,`<mark style="${style};border-radius:2px;padding:1px 2px" title="⚠️ ${cl.clause_type} (${(cl.risk_level||"").toUpperCase()}): ${(cl.explanation||"").substring(0,120)}">$1</mark>`);
+    }catch(e){}
   });
-  return <pre className="whitespace-pre-wrap text-sm text-gray-300 leading-relaxed font-mono bg-[#0a0a14] rounded-lg p-5 max-h-[500px] overflow-auto border border-white/5" dangerouslySetInnerHTML={{__html:html}}/>;
+  return(
+    <div className="bg-white rounded-xl border border-[#e8e5e0] max-h-[550px] overflow-auto shadow-sm">
+      <div className="px-5 py-3 border-b border-[#f0ede8] flex items-center gap-3 sticky top-0 bg-white z-10">
+        <span className="text-xs font-semibold text-[#333] uppercase tracking-wider">Document</span>
+        {clauses.length>0&&<span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">{clauses.length} clause{clauses.length!==1?"s":""} flagged</span>}
+        <span className="text-[10px] text-[#bbb] ml-auto">Hover highlights for details</span>
+      </div>
+      <div className="px-8 py-6 font-serif text-[13px] text-[#1a1a1a] leading-7 whitespace-pre-wrap" style={{fontFamily:"'Georgia',serif"}} dangerouslySetInnerHTML={{__html:html}}/>
+    </div>
+  );
 }
 
 function AgentDot({active,name}){
