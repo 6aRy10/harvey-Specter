@@ -242,26 +242,75 @@ const PIPELINE_STEPS=[
 ];
 
 function PipelineProgress({running,pipelineResult,animStep}){
+  const [expandedStep,setExpandedStep]=React.useState(null);
   const audit=pipelineResult?.audit_trail||[];
   const completedSteps=new Set(audit.map(a=>a.step));
+  const d=pipelineResult;
+
+  const stepDetail=(num)=>{
+    if(!d)return null;
+    if(num===1)return d.audit_trail?.find(a=>a.step===1)?.details||null;
+    if(num===2)return d.intake?`${d.intake.contract_type||"DPA"} | Parties: ${(d.intake.parties||[]).join(", ")||"?"} | ${d.intake.jurisdiction||"?"} | ${d.intake.urgency||"?"} urgency`:null;
+    if(num===3){
+      const cls=d.clauses?.clauses||[];
+      const h=cls.filter(c=>c.risk==="HIGH").length,m=cls.filter(c=>c.risk==="MEDIUM").length,l=cls.filter(c=>c.risk==="LOW").length;
+      return cls.length?`${cls.length} clauses — ${h} HIGH, ${m} MEDIUM, ${l} LOW`:null;
+    }
+    if(num===4)return d.gdpr?`GDPR ${d.gdpr.gdpr_score}/10 | ${d.gdpr.transfer_mechanism||"?"} | Subprocessor: ${d.gdpr.subprocessor_clause?"✓":"✗"} | Breach notif: ${d.gdpr.breach_notification?"✓":"✗"} | ${(d.gdpr.issues||[]).length} issues`:null;
+    if(num===5)return d.risk?`${d.risk.risk_score}/10 ${d.risk.risk_level} | Safe to sign: ${d.risk.safe_to_sign?"YES":"NO"} | ${d.risk.executive_summary||""}`:null;
+    if(num===6)return d.redlines?`${(d.redlines.redlines||[]).length} redlines proposed`:null;
+    if(num===7)return d.memo?`Recommendation: ${d.memo.recommendation} | ${(d.memo.conditions||[]).length} conditions | Verified by: ${d.memo.verified_by||"AI"}`:null;
+    if(num===8)return d.legal_slack_sent?"✅ Slack sent to Legal Team":"⚠️ No legal_team webhook — add one in Settings";
+    if(num===9)return"⏳ Awaiting Legal Team review — click link in Slack or use Review panel below";
+    if(num===10)return`Audit trail: ${(d.audit_trail||[]).length} entries logged`;
+    return null;
+  };
+
+  const stepExpanded=(num)=>{
+    if(!d)return null;
+    if(num===3)(d.clauses?.clauses||[]).slice(0,5);
+    const cls=d.clauses?.clauses||[];
+    if(num===3)return(<div className="space-y-1 mt-2">{cls.slice(0,5).map((c,i)=>(<div key={i} className="flex gap-2 items-start text-[10px]"><span className={`px-1 rounded font-bold flex-shrink-0 ${c.risk==="HIGH"?"bg-red-100 text-red-700":c.risk==="MEDIUM"?"bg-amber-100 text-amber-700":"bg-green-100 text-green-700"}`}>{c.risk}</span><span className="text-[#555]"><b>{c.name}</b>: {c.issue}</span></div>))}</div>);
+    if(num===4)return(<div className="space-y-1 mt-2">{(d.gdpr?.issues||[]).map((i,idx)=>(<p key={idx} className="text-[10px] text-[#555]">⚠️ <b>{i.article}</b>: {i.issue}</p>))}</div>);
+    if(num===5)return(<div className="mt-2 space-y-1">{(d.risk?.top_risks||[]).map((r,i)=>(<p key={i} className="text-[10px] text-[#555]">• {r}</p>))}</div>);
+    if(num===6)return(<div className="space-y-1 mt-2">{(d.redlines?.redlines||[]).slice(0,3).map((r,i)=>(<div key={i} className="text-[10px] border-l-2 border-green-300 pl-2"><p className="font-medium text-[#333]">{r.clause}</p><p className="text-green-700">{r.proposed_redline?.substring(0,120)}</p></div>))}</div>);
+    if(num===7)return d.memo?.memo?(<p className="text-[10px] text-[#555] mt-2 leading-relaxed">{d.memo.memo.substring(0,400)}…</p>):null;
+    return null;
+  };
+
+  const ragSteps=new Set([3,4,5,7]);
+
   return(
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {PIPELINE_STEPS.map(s=>{
         const done=completedSteps.has(s.num);
         const active=running&&animStep===s.num;
-        const auditEntry=audit.filter(a=>a.step===s.num).pop();
+        const detail=stepDetail(s.num);
+        const expanded=expandedStep===s.num;
+        const hasExpanded=done&&stepExpanded(s.num);
         return(
-          <div key={s.num} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-all ${done?"bg-green-50 border border-green-100":active?"bg-indigo-50 border border-indigo-200 animate-pulse":"bg-[#fafaf9] border border-[#f0ede8]"}`}>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-bold ${done?"bg-green-500 text-white":active?"bg-indigo-500 text-white":"bg-[#e8e5e0] text-[#999]"}`}>
-              {done?"✓":s.num}
+          <div key={s.num} className={`rounded-lg border transition-all ${done?"border-green-200 bg-green-50":active?"border-indigo-200 bg-indigo-50":"border-[#f0ede8] bg-[#fafaf9]"}`}>
+            <div className={`flex items-center gap-2.5 px-3 py-2 ${hasExpanded?"cursor-pointer":""}`}
+              onClick={()=>hasExpanded&&setExpandedStep(expanded?null:s.num)}>
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${done?"bg-green-500 text-white":active?"bg-indigo-500 text-white animate-pulse":"bg-[#e8e5e0] text-[#999]"}`}>
+                {done?"✓":active?"↻":s.num}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className={`text-xs font-medium ${done?"text-green-800":active?"text-indigo-700":"text-[#555]"}`}>{s.label}</p>
+                  {done&&ragSteps.has(s.num)&&<span className="text-[9px] px-1 py-0.5 bg-violet-100 text-violet-600 rounded font-semibold">RAG</span>}
+                </div>
+                {detail&&<p className="text-[10px] text-[#777] mt-0.5 leading-snug">{detail}</p>}
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {done&&<span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">done</span>}
+                {active&&<span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 animate-pulse">running…</span>}
+                {hasExpanded&&<span className="text-[#bbb] text-[10px]">{expanded?"▲":"▼"}</span>}
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className={`text-xs font-medium ${done?"text-green-800":active?"text-indigo-700":"text-[#555]"}`}>{s.label}</p>
-              {auditEntry?.details&&<p className="text-[10px] text-[#888] mt-0.5 truncate">{auditEntry.details}</p>}
-            </div>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${done?"bg-green-100 text-green-700":active?"bg-indigo-100 text-indigo-600":"bg-[#f0ede8] text-[#bbb]"}`}>
-              {done?"done":active?"running...":"pending"}
-            </span>
+            {expanded&&hasExpanded&&(
+              <div className="px-3 pb-2.5 border-t border-green-100">{stepExpanded(s.num)}</div>
+            )}
           </div>
         );
       })}
@@ -338,6 +387,8 @@ function Dashboard({onBack}){
   const[simplifyResult,setSimplifyResult]=useState(null);
   const[pipelineDraft,setPipelineDraft]=useState(null);
   const[kbCitations,setKbCitations]=useState([]);
+  const[ragAnswer,setRagAnswer]=useState(null);
+  const[ragSearching,setRagSearching]=useState(false);
   const[triageCases,setTriageCases]=useState([
     {id:"tc1",title:"BMW DPA — Data Transfer Clause",contract:"BMW_DPA_v2.pdf",type:"DPA",risk:"HIGH",deadline:"2026-04-27T09:00",assignee:"Dr. Andreas",status:"escalated",reason:"Cross-border transfer clause violates Schrems II — needs CEO sign-off before BMW deadline",hoursLeft:8},
     {id:"tc2",title:"Client NDA — Non-Compete Scope",contract:"Client_NDA_Draft.docx",type:"NDA",risk:"HIGH",deadline:"2026-04-27T14:00",assignee:"Ms. Silvia",status:"pending_review",reason:"Non-compete clause exceeds 2-year BGB limit — client meeting tomorrow at 2pm",hoursLeft:13},
@@ -1103,16 +1154,55 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
             </div>)}
 
             {tab==="research"&&(<div className="card p-6 space-y-4">
-              <div><h2 className="card-header text-xl">Legal Research</h2><p className="text-xs text-[#999] mt-1">RAG-powered search across German law, EU regulations, and US contract law.</p></div>
-              <div className="flex flex-wrap gap-1.5">
-                {["GDPR requirements for data processing agreements","Non-compete enforceability under German BGB","Schrems II implications for US data transfers","German employment termination notice periods under 622 BGB"].map(s=>(
-                  <button key={s} onClick={()=>setResearchQ(s)} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
+              <div>
+                <h2 className="card-header text-xl">Legal Research</h2>
+                <p className="text-xs text-[#999] mt-1">RAG-powered — searches German law, EU regulations, CUAD clauses, and your firm's knowledge base. Sources always cited.</p>
               </div>
-              <textarea value={researchQ} onChange={e=>setResearchQ(e.target.value)} rows={5}
-                className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Ask a legal question..."/>
-              <button onClick={()=>callAPI("/api/research",{question:researchQ})} disabled={loading||!researchQ.trim()}
+              <div className="flex flex-wrap gap-1.5">
+                {["GDPR requirements for data processing agreements","Non-compete enforceability under German BGB §74","Schrems II transfer mechanisms and SCCs","German employment termination notice periods §622 BGB","Data breach notification obligations Art.33 GDPR","DPA Art.28 processor obligations"].map(s=>(
+                  <button key={s} onClick={()=>{setResearchQ(s);setRagAnswer(null);}} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
+              </div>
+              <textarea value={researchQ} onChange={e=>setResearchQ(e.target.value)} rows={4}
+                className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Ask any legal question — e.g. 'What are the GDPR obligations for cross-border data transfers?'"/>
+              <button onClick={async()=>{
+                if(!researchQ.trim())return;
+                setRagSearching(true);setRagAnswer(null);
+                try{
+                  const [r1,r2,r3]=await Promise.all([
+                    fetch(`${API}/api/rag/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:researchQ,collection:"legal_knowledge",n_results:4})}).then(r=>r.json()),
+                    fetch(`${API}/api/rag/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:researchQ,collection:"firm_policies",n_results:2})}).then(r=>r.json()),
+                    fetch(`${API}/api/research`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:researchQ})}).then(r=>r.json()),
+                  ]);
+                  setRagAnswer({legal:r1.results||[],policies:r2.results||[],synthesis:r3});
+                }catch(e){setRagAnswer({error:e.message});}
+                setRagSearching(false);
+              }} disabled={ragSearching||!researchQ.trim()}
                 className="btn-primary w-full py-3 rounded-lg text-sm transition">
-                {loading?"Researching...":"Research"}</button>
+                {ragSearching?"Searching knowledge base...":"Research with RAG"}</button>
+              {ragAnswer&&!ragAnswer.error&&(<div className="space-y-3">
+                {ragAnswer.synthesis?.answer&&(<div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                  <p className="text-[10px] font-semibold text-indigo-600 uppercase mb-1.5">⚖️ Synthesized Answer</p>
+                  <p className="text-sm text-[#333] leading-relaxed">{ragAnswer.synthesis.answer}</p>
+                </div>)}
+                {ragAnswer.legal.length>0&&(<div className="space-y-2">
+                  <p className="text-[10px] font-semibold text-[#999] uppercase">📚 Legal Knowledge Sources ({ragAnswer.legal.length})</p>
+                  {ragAnswer.legal.filter(r=>(r.distance||9)<1.8).map((r,i)=>(<div key={i} className="bg-[#fafaf9] rounded-lg p-3 border border-[#e8e5e0]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-semibold text-indigo-600">{r.metadata?.source||r.source||"Legal DB"}</span>
+                      <span className="text-[9px] text-[#bbb]">relevance: {Math.round((1-(r.distance||0)/2)*100)}%</span>
+                    </div>
+                    <p className="text-[11px] text-[#555] leading-relaxed">{(r.text||r.documents||r.document||"").substring(0,350)}</p>
+                  </div>))}
+                </div>)}
+                {ragAnswer.policies.filter(r=>(r.distance||9)<1.8).length>0&&(<div className="space-y-2">
+                  <p className="text-[10px] font-semibold text-[#999] uppercase">📖 Firm Policy Sources</p>
+                  {ragAnswer.policies.filter(r=>(r.distance||9)<1.8).map((r,i)=>(<div key={i} className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                    <span className="text-[10px] font-semibold text-amber-700">{r.metadata?.source||"Internal Playbook"}</span>
+                    <p className="text-[11px] text-[#555] mt-1 italic">"{(r.text||r.document||"").substring(0,300)}"</p>
+                  </div>))}
+                </div>)}
+              </div>)}
+              {ragAnswer?.error&&<p className="text-xs text-red-500">{ragAnswer.error}</p>}
             </div>)}
 
             {tab==="matter"&&(<div className="card p-6 space-y-4">

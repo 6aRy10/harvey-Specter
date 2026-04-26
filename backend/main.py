@@ -628,6 +628,16 @@ async def run_pipeline(req: PipelineRequest):
         audit.append(entry)
         return entry
 
+    def rag_context(query: str, collection: str = "legal_knowledge", n: int = 3) -> str:
+        """Pull RAG context snippets — silently skips if collection missing."""
+        try:
+            from data_pipeline.vector_store import search_vector_store
+            hits = search_vector_store(query, collection, n)
+            snippets = [f"[{h.get('source','KB')}]: {(h.get('text') or '')[:300]}" for h in hits if (h.get('distance') or 9) < 1.8]
+            return "\n".join(snippets) if snippets else ""
+        except Exception:
+            return ""
+
     try:
         MAX_CHARS = 5000
         text = req.contract_text[:MAX_CHARS] if len(req.contract_text) > MAX_CHARS else req.contract_text
@@ -652,12 +662,17 @@ async def run_pipeline(req: PipelineRequest):
         log_step(3, "clause_agent", "extracting_clauses")
         log_step(4, "compliance_agent", "gdpr_check_started")
 
+        rag_clauses = rag_context(f"{req.matter_name} DPA clause risks {intake.get('contract_type','')}", "legal_knowledge", 3)
+        rag_gdpr = rag_context("GDPR data processing agreement Art.28 Schrems II subprocessor breach notification", "legal_knowledge", 3)
+        rag_policies = rag_context(f"{req.matter_name} contract policy compliance standard", "firm_policies", 3)
+
         async def extract_clauses():
+            rag_block = f"\n\nRelevant legal knowledge:\n{rag_clauses}" if rag_clauses else ""
             r = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "Extract key DPA clauses. Return JSON: {\"clauses\":[{\"name\":\"...\",\"text\":\"...\",\"risk\":\"HIGH|MEDIUM|LOW\",\"issue\":\"...\"}]}"},
-                    {"role": "user", "content": text}
+                    {"role": "user", "content": text + rag_block}
                 ],
                 response_format={"type": "json_object"}, max_tokens=600, temperature=0.1
             )
@@ -695,21 +710,23 @@ async def run_pipeline(req: PipelineRequest):
         )
         clauses = json.loads(clauses_result.choices[0].message.content)
         gdpr = json.loads(gdpr_result.choices[0].message.content)
-        log_step(3, "clause_agent", "clauses_extracted", f"{len(clauses.get('clauses',[]))} key clauses found")
-        log_step(4, "compliance_agent", "gdpr_check_complete", f"GDPR score: {gdpr.get('gdpr_score','N/A')}/10 — {len(gdpr.get('issues',[]))} issues")
+        log_step(3, "clause_agent", "clauses_extracted", f"{len(clauses.get('clauses',[]))} key clauses found | RAG-enhanced")
+        log_step(4, "compliance_agent", "gdpr_check_complete", f"GDPR score: {gdpr.get('gdpr_score','N/A')}/10 — {len(gdpr.get('issues',[]))} issues | RAG-enhanced")
 
         # ── STEP 5: Risk scoring ──────────────────────────────────────
         log_step(5, "risk_agent", "scoring")
+        rag_risk = rag_context(f"risk assessment {intake.get('contract_type','DPA')} {req.jurisdiction}", "legal_knowledge", 2)
+        risk_rag_block = f"\n\nRelevant risk precedents:\n{rag_risk}" if rag_risk else ""
         risk_resp = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Risk scoring agent. Return JSON: {\"risk_score\":0-10,\"risk_level\":\"HIGH|MEDIUM|LOW\",\"top_risks\":[\"...\"],\"safe_to_sign\":true/false,\"executive_summary\":\"2 sentences\"}"},
-                {"role": "user", "content": f"Clauses: {json.dumps(clauses)}\nGDPR: {json.dumps(gdpr)}\nContract snippet: {text[:1000]}"}
+                {"role": "user", "content": f"Clauses: {json.dumps(clauses)}\nGDPR: {json.dumps(gdpr)}\nContract snippet: {text[:1000]}{risk_rag_block}"}
             ],
             response_format={"type": "json_object"}, max_tokens=300, temperature=0.1
         )
         risk = json.loads(risk_resp.choices[0].message.content)
-        log_step(5, "risk_agent", "risk_scored", f"Risk: {risk.get('risk_score','?')}/10 — {risk.get('risk_level','?')} — Safe to sign: {risk.get('safe_to_sign','?')}")
+        log_step(5, "risk_agent", "risk_scored", f"Risk: {risk.get('risk_score','?')}/10 — {risk.get('risk_level','?')} — Safe to sign: {risk.get('safe_to_sign','?')} | RAG-enhanced")
 
         # ── STEP 6: Redlines
         log_step(6, "drafting_agent", "drafting_redlines")
@@ -729,11 +746,13 @@ async def run_pipeline(req: PipelineRequest):
 
         # ── STEP 7: QA Memo ───────────────────────────────────────────
         log_step(7, "qa_agent", "generating_memo")
+        rag_memo = rag_context(f"{req.matter_name} approval memo standard recommendation", "firm_policies", 3)
+        memo_rag_block = f"\n\nFirm policy standards to reference:\n{rag_memo}" if rag_memo else ""
         memo_resp = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a QA agent. Write a concise legal memo (3-4 paragraphs) for the executive approver. Return JSON: {\"memo\":\"...\",\"recommendation\":\"APPROVE|REJECT|NEGOTIATE\",\"conditions\":[\"...\"],\"verified_by\":\"Harveyy AI QA Agent\"}"},
-                {"role": "user", "content": f"Matter: {req.matter_name}\nRisk: {json.dumps(risk)}\nGDPR issues: {json.dumps(gdpr.get('issues',[]))}\nRedlines available: {len(redlines.get('redlines',[]))}"}
+                {"role": "user", "content": f"Matter: {req.matter_name}\nRisk: {json.dumps(risk)}\nGDPR issues: {json.dumps(gdpr.get('issues',[]))}\nRedlines available: {len(redlines.get('redlines',[]))}{memo_rag_block}"}
             ],
             response_format={"type": "json_object"}, max_tokens=500, temperature=0.2
         )
