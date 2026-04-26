@@ -292,7 +292,7 @@ function Dashboard({onBack}){
     try{const r=await fetch(`${API}${endpoint}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     if(!r.ok)throw new Error(`API ${r.status}`);setResult(await r.json());}
     catch(e){setResult({error:e.message});}
-    setLoading(false);
+    finally{setLoading(false);}
   };
 
   const loadSample=()=>{setContractText(`NON-DISCLOSURE AGREEMENT
@@ -489,7 +489,7 @@ state and federal courts located in Wilmington, Delaware.`);};
   },[contractText]);
 
   const updateIntakeAnswer=(id,val)=>{setIntakeQs(prev=>prev.map(q=>q.id===id?{...q,answer:val}:q));};
-  const intakeContext=()=>{if(!intakeQs)return{};const ctx={};intakeQs.forEach(q=>{if(q.answer)ctx[q.id]=q.answer;});return ctx;};
+  const intakeContext=()=>{if(!intakeQs)return{};const ctx={};intakeQs.forEach(q=>{const a=q.answer;if(!a||a===""||( Array.isArray(a)&&a.length===0))return;ctx[q.id]=Array.isArray(a)?a.join(", "):a;});return ctx;};
 
   const searchRAG=async()=>{if(!ragQuery.trim())return;setLoading(true);
     try{const r=await fetch(`${API}/api/rag/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:ragQuery,n_results:5})});setRagResults(await r.json());}
