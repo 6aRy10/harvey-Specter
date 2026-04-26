@@ -1074,7 +1074,13 @@ async def kb_upload_multiple(
         except Exception as e:
             results.append({"filename": fname, "status": "error", "error": str(e)})
 
-    return {"collection": collection, "files": results, "total_files": len(results), "succeeded": succeeded}
+    try:
+        from data_pipeline.vector_store import list_collections
+        cols = list_collections()
+        total_chunks = next((c["count"] for c in cols if c["name"] == collection), 0)
+    except Exception:
+        total_chunks = None
+    return {"collection": collection, "files": results, "total_files": len(results), "succeeded": succeeded, "collection_total_chunks": total_chunks}
 
 
 # ─── Knowledge Base: Import Folder ───
