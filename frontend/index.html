@@ -67,7 +67,10 @@ const{useState,useEffect,useRef,useCallback}=React;
 /* ───────────── LANDING PAGE ───────────── */
 function LandingPage({onEnter}){
   const vidRef=useRef();
+  const audioRef=useRef();
+  const[muted,setMuted]=useState(true);
   useEffect(()=>{const v=vidRef.current;if(!v)return;v.muted=true;v.volume=0;v.play().catch(()=>{});const resume=()=>{v.muted=true;v.play().catch(()=>{})};document.addEventListener('click',resume,{once:true});document.addEventListener('touchstart',resume,{once:true});return()=>{document.removeEventListener('click',resume);document.removeEventListener('touchstart',resume);};},[]);
+  const toggleAudio=()=>{const a=audioRef.current;if(!a)return;if(muted){a.volume=0.3;a.play().catch(()=>{});setMuted(false);}else{a.pause();setMuted(true);}};
   return(
     <div className="relative min-h-screen bg-black overflow-hidden">
       {/* ── Background: video if available, cinematic CSS fallback ── */}
@@ -85,7 +88,7 @@ function LandingPage({onEnter}){
       <div className="absolute inset-0" style={{zIndex:3,background:'linear-gradient(90deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.55) 45%,rgba(0,0,0,.15) 75%,transparent 100%)'}}/>
       <div className="absolute inset-0" style={{zIndex:3,background:'linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 40%,transparent 80%,rgba(0,0,0,.4) 100%)'}}/>
       {/* Background audio */}
-      <audio autoPlay loop style={{display:'none'}}><source src="bg-audio.mp3" type="audio/mpeg"/></audio>
+      <audio ref={audioRef} loop style={{display:'none'}}><source src="bg-audio.mp3" type="audio/mpeg"/></audio>
 
       {/* ── Top Bar ── */}
       <nav className="relative z-20 flex items-center justify-between px-8 md:px-16 py-6">
@@ -97,7 +100,11 @@ function LandingPage({onEnter}){
           <span className="hover:text-white cursor-pointer transition">Security</span>
           <span className="hover:text-white cursor-pointer transition">About</span>
         </div>
-        <button onClick={onEnter} className="text-sm text-gray-300 hover:text-white transition">Login</button>
+        <div className="flex items-center gap-4">
+          <button onClick={toggleAudio} title={muted?"Play ambient audio":"Mute audio"}
+            className="text-gray-400 hover:text-white transition text-lg">{muted?"🔇":"🔊"}</button>
+          <button onClick={onEnter} className="text-sm text-gray-300 hover:text-white transition">Login</button>
+        </div>
       </nav>
 
       {/* ── Announcement Bar ── */}
