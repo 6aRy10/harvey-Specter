@@ -8,6 +8,8 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -357,7 +359,24 @@ the State of Delaware, USA, without regard to its conflict of laws provisions.
 Any disputes arising under this Agreement shall be resolved exclusively in the
 state and federal courts located in Wilmington, Delaware.`);};
 
-  const handleFile=(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setContractText(ev.target.result);r.readAsText(f);};
+  const handleFile=async(e)=>{
+    const f=e.target.files[0];if(!f)return;
+    if(f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf")){
+      try{
+        const arrayBuf=await f.arrayBuffer();
+        const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
+        let text="";
+        for(let i=1;i<=pdf.numPages;i++){
+          const page=await pdf.getPage(i);
+          const content=await page.getTextContent();
+          text+=content.items.map(s=>s.str).join(" ")+"\n";
+        }
+        setContractText(text.trim());
+      }catch(err){setChatMsgs(p=>[...p,{role:"ai",text:"Could not parse PDF: "+err.message,ts:new Date().toLocaleTimeString()}]);}
+    } else {
+      const r=new FileReader();r.onload=ev=>setContractText(ev.target.result);r.readAsText(f);
+    }
+  };
 
   const loadBMW=async()=>{try{const r=await fetch('demo/bmw_dpa_contract.txt');if(r.ok){setContractText(await r.text())}else{setContractText("Failed to load BMW DPA")}}catch(e){setContractText("Failed to load: "+e.message)}};
 
