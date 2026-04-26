@@ -744,7 +744,7 @@ async def run_pipeline(req: PipelineRequest):
                     {"role": "system", "content": clause_system},
                     {"role": "user", "content": text + clause_rag_block + policy_block}
                 ],
-                response_format={"type": "json_object"}, max_tokens=600, temperature=0.1
+                response_format={"type": "json_object"}, max_tokens=1200, temperature=0.1
             )),
             loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -752,7 +752,7 @@ async def run_pipeline(req: PipelineRequest):
                     {"role": "system", "content": compliance_system},
                     {"role": "user", "content": text + gdpr_rag_block}
                 ],
-                response_format={"type": "json_object"}, max_tokens=500, temperature=0.1
+                response_format={"type": "json_object"}, max_tokens=800, temperature=0.1
             ))
         )
         clauses = json.loads(clauses_result.choices[0].message.content)
@@ -775,7 +775,7 @@ async def run_pipeline(req: PipelineRequest):
                     {"role": "system", "content": "Risk scoring agent. Return JSON: {\"risk_score\":0-10,\"risk_level\":\"HIGH|MEDIUM|LOW\",\"top_risks\":[\"...\"],\"safe_to_sign\":true/false,\"executive_summary\":\"2 sentences\"}"},
                     {"role": "user", "content": f"Clauses: {json.dumps(clauses)}\nGDPR: {json.dumps(gdpr)}\nContract snippet: {text[:800]}{risk_rag_block}"}
                 ],
-                response_format={"type": "json_object"}, max_tokens=300, temperature=0.1
+                response_format={"type": "json_object"}, max_tokens=600, temperature=0.1
             )),
             loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -783,7 +783,7 @@ async def run_pipeline(req: PipelineRequest):
                     {"role": "system", "content": "Contract drafting agent. For each HIGH risk clause propose a redline. Return JSON: {\"redlines\":[{\"clause\":\"...\",\"original_issue\":\"...\",\"proposed_redline\":\"...\",\"rationale\":\"...\"}]}"},
                     {"role": "user", "content": f"High risk clauses: {json.dumps(high_risk[:3])}\nCompliance issues: {json.dumps(gdpr.get('issues',[])[:3])}"}
                 ],
-                response_format={"type": "json_object"}, max_tokens=600, temperature=0.2
+                response_format={"type": "json_object"}, max_tokens=1000, temperature=0.2
             ))
         )
         risk = json.loads(risk_result.choices[0].message.content)
