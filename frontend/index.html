@@ -1682,7 +1682,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
 
 /* ───────────── APP ROOT ───────────── */
 function App(){
-  const[page,setPage]=useState("landing");
+  const[page,setPage]=useState(window.location.hash.startsWith("#matter=")?"dashboard":"landing");
   if(page==="landing")return <LandingPage onEnter={()=>setPage("dashboard")}/>;
   return <Dashboard onBack={()=>setPage("landing")}/>;
 }
