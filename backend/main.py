@@ -119,26 +119,31 @@ async def extract_pdf(file: UploadFile = File(...)):
         if len(text) >= 200:
             return {"text": text, "pages": len(reader.pages), "chars": len(text), "method": "text"}
 
-        # Step 2: Scanned PDF — OCR each page via OpenAI Vision
+        # Step 2: Scanned PDF — OCR each page via OpenAI Vision (parallel)
         import fitz  # pymupdf
         doc = fitz.open(stream=contents, filetype="pdf")
-        MAX_PAGES = 8
-        all_text = []
-        for i in range(min(doc.page_count, MAX_PAGES)):
-            pix = doc[i].get_pixmap(dpi=120)
+        MAX_PAGES = 4
+        pages_to_ocr = min(doc.page_count, MAX_PAGES)
+
+        def ocr_page(i):
+            pix = doc[i].get_pixmap(dpi=100)
             b64 = base64.b64encode(pix.tobytes("png")).decode()
             resp = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": [
                     {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}", "detail": "low"}},
-                    {"type": "text", "text": "Extract ALL text from this contract page verbatim. Return only the text, no comments."}
+                    {"type": "text", "text": "Extract all text from this contract page. Return only the text."}
                 ]}],
-                max_tokens=1500,
+                max_tokens=1000,
             )
-            all_text.append(resp.choices[0].message.content.strip())
+            return resp.choices[0].message.content.strip()
+
+        loop = asyncio.get_event_loop()
+        tasks = [loop.run_in_executor(None, ocr_page, i) for i in range(pages_to_ocr)]
+        all_text = await asyncio.gather(*tasks)
         extracted = "\n\n".join(all_text)
         return {"text": extracted, "pages": doc.page_count, "chars": len(extracted), "method": "ocr",
-                "note": f"OCR applied ({min(doc.page_count, MAX_PAGES)}/{doc.page_count} pages)"}
+                "note": f"{pages_to_ocr}/{doc.page_count} pages"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

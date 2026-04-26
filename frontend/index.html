@@ -364,7 +364,9 @@ state and federal courts located in Wilmington, Delaware.`);};
       setChatMsgs(p=>[...p,{role:"ai",text:`Reading "${f.name}"...`,ts:new Date().toLocaleTimeString(),loading:true}]);
       try{
         const form=new FormData();form.append("file",f);
-        const r=await fetch(`${API}/api/extract-pdf`,{method:"POST",body:form});
+        const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),60000);
+        const r=await fetch(`${API}/api/extract-pdf`,{method:"POST",body:form,signal:ctrl.signal});
+        clearTimeout(t);
         const d=await r.json();
         setChatMsgs(p=>p.filter(m=>!m.loading));
         if(d.error==="scanned_pdf"){
