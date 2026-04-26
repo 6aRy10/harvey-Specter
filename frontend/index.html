@@ -735,6 +735,8 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
     else if(t.includes("license")||t.includes("intellectual property")||t.includes("royalt"))type="license";
     else if(t.includes("lease")||t.includes("tenant")||t.includes("landlord"))type="lease";
     else if(t.includes("merger")||t.includes("acquisition")||t.includes("share purchase"))type="ma";
+    else if(t.includes("manufactur")||t.includes("supply agreement")||t.includes("supplier")||t.includes("purchase order")||t.includes("procurement")||t.includes("incoterm")||t.includes("delivery")||t.includes("defect")||t.includes("werkvertrag"))type="manufacturing";
+    else if(t.includes("settlement")||t.includes("litigation")||t.includes("lawsuit")||t.includes("claim")||t.includes("plaintiff")||t.includes("defendant")||t.includes("dispute resolution")||t.includes("arbitration")||t.includes("judgment"))type="litigation";
 
     const qMap={
       dpa:[
@@ -800,6 +802,24 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
         {id:"deadline",question:"When is the deal deadline?",type:"text",placeholder:"e.g., Closing in 3 weeks"},
         {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Clean deal, no hidden liabilities"},
         {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Undisclosed litigation or debt"},
+      ],
+      manufacturing:[
+        {id:"goal",question:"What is your objective with this contract review?",type:"multiselect",options:["Check liability & warranty terms","Review delivery & acceptance clauses","Verify LkSG / supply chain compliance","Negotiate better terms","Full risk assessment"]},
+        {id:"role",question:"Which party are you?",type:"select",options:["Buyer / OEM","Supplier / Manufacturer","Subcontractor"]},
+        {id:"deadline",question:"When is the contract deadline / production start?",type:"text",placeholder:"e.g., Production starts Q3, signing in 2 weeks"},
+        {id:"jurisdiction",question:"Which jurisdiction / law governs this contract?",type:"text",placeholder:"e.g., German law, English law, ICC rules"},
+        {id:"concern",question:"What's your biggest concern?",type:"select",options:["Defect liability is unlimited","Delivery penalties too harsh","No recall cost allocation","IP / tooling ownership unclear","Supply chain compliance (LkSG)"]},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Liability capped at contract value"},
+        {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Unlimited recall liability falling on us"},
+      ],
+      litigation:[
+        {id:"goal",question:"What do you need from this review?",type:"multiselect",options:["Assess settlement terms","Check release clause scope","Verify enforceability","Identify hidden obligations","Full risk assessment"]},
+        {id:"role",question:"Which party are you representing?",type:"select",options:["Claimant / Plaintiff","Defendant / Respondent","Both Sides (mediator)"]},
+        {id:"deadline",question:"When is the signing / hearing date?",type:"text",placeholder:"e.g., Court date is in 10 days"},
+        {id:"jurisdiction",question:"Which court / jurisdiction?",type:"text",placeholder:"e.g., LG München, English High Court, ICC arbitration"},
+        {id:"concern",question:"Key concern?",type:"select",options:["Release clause is too broad","Payment terms unclear","Confidentiality obligations","Future claims not protected","Enforceability cross-border"]},
+        {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Full release with one payment, no ongoing obligations"},
+        {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Releasing future claims we don't know about yet"},
       ],
     };
     const questions=(qMap[type]||qMap.general).map(q=>({...q,answer:""}));

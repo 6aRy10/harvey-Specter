@@ -105,13 +105,33 @@ class LegalResearchAgent:
 
     # Keywords that signal a legal question — fast pre-check before hitting GPT
     LEGAL_KEYWORDS = {
-        "contract", "clause", "agreement", "law", "legal", "liability", "gdpr", "dsgvo", "bgb",
-        "hgb", "compliance", "regulation", "breach", "termination", "jurisdiction", "damages",
-        "indemnity", "warranty", "intellectual", "property", "copyright", "patent", "privacy",
-        "data", "subprocessor", "processor", "controller", "dpa", "nda", "nda", "schrems",
-        "employment", "arbitration", "court", "parties", "obligation", "rights", "penalty",
-        "governing", "force majeure", "confidential", "eu", "european", "dsgvo", "art.", "§",
-        "non-compete", "noncompete", "transfer", "processing", "retention", "notice", "ip",
+        # General contract
+        "contract", "clause", "agreement", "law", "legal", "liability", "compliance",
+        "regulation", "breach", "termination", "jurisdiction", "damages", "indemnity",
+        "warranty", "intellectual", "property", "copyright", "patent", "governing",
+        "force majeure", "confidential", "parties", "obligation", "rights", "penalty",
+        "notice", "ip", "non-compete", "noncompete", "arbitration", "court", "eu",
+        "european", "art.", "§", "sign", "enforce", "statute", "act", "directive",
+        # Data / privacy
+        "gdpr", "dsgvo", "bgb", "hgb", "privacy", "data", "subprocessor", "processor",
+        "controller", "dpa", "schrems", "transfer", "processing", "retention",
+        # Employment
+        "employment", "employee", "employer", "dismiss", "redundan", "severance",
+        "arbeitsvertrag", "kündigung",
+        # Manufacturing / supply chain
+        "manufactur", "supply", "supplier", "vendor", "procurement", "product",
+        "delivery", "defect", "recall", "acceptance", "specification", "quality",
+        "ce marking", "lksg", "lieferkette", "produkthaftung", "werkvertrag",
+        "purchase order", "incoterms", "fob", "cif", "ex works",
+        # Litigation / dispute
+        "litigat", "dispute", "settlement", "lawsuit", "claim", "plaintiff", "defendant",
+        "judgment", "injunction", "appeal", "mediation", "arbitrat", "tribunal",
+        "limitation period", "statute of limitations", "costs", "discovery",
+        # Finance / M&A
+        "merger", "acquisition", "share", "equity", "due diligence", "valuation",
+        "nda", "loan", "mortgage", "security", "collateral", "guarantee",
+        # Real estate / lease
+        "lease", "rent", "tenant", "landlord", "eviction", "mietvertrag",
     }
 
     def _is_legal_question(self, question: str) -> bool:
