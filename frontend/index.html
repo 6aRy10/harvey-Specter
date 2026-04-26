@@ -821,12 +821,15 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
   const intakeContext=()=>{if(!intakeQs)return{};const ctx={};intakeQs.forEach(q=>{const a=q.answer;if(!a||a===""||( Array.isArray(a)&&a.length===0))return;ctx[q.id]=Array.isArray(a)?a.join(", "):a;});return ctx;};
 
   const searchRAG=async()=>{if(!ragQuery.trim())return;setLoading(true);
+    const hasContract=contractText.trim().length>50;
     try{
+      const chatBody={message:ragQuery,context:{}};
+      if(hasContract)chatBody.contract_text=contractText;
       const [vecRes,chatRes]=await Promise.all([
         fetch(`${API}/api/rag/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:ragQuery,n_results:5})}).then(r=>r.json()),
-        fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:ragQuery,context:{}})}).then(r=>r.json()).catch(()=>null),
+        fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(chatBody)}).then(r=>r.json()).catch(()=>null),
       ]);
-      setRagResults({...vecRes,chatAnswer:chatRes?.reply||null,chatSources:chatRes?.sources||[]});
+      setRagResults({...vecRes,chatAnswer:chatRes?.reply||null,chatSources:chatRes?.sources||[],usedContract:hasContract});
     }catch(e){setRagResults({error:e.message});}setLoading(false);};
 
   const rv=result?.agent_results?.contract_review||(result?.agent==="contract_review"?result:null);
@@ -1496,24 +1499,67 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
             </div>)}
 
             {tab==="rag"&&(<div className="card p-6 space-y-4">
-              <div><h2 className="card-header text-xl">Q&A</h2><p className="text-xs text-[#999] mt-1">Ask a legal question — get an AI answer plus exact knowledge base sources.</p></div>
+              <div>
+                <h2 className="card-header text-xl">Q&A</h2>
+                <p className="text-xs text-[#999] mt-1">{contractText.trim().length>50?"Questions are answered in context of your loaded contract plus the legal knowledge base.":"Ask any legal question — load a contract first to get contract-specific answers."}</p>
+              </div>
+
+              {/* Contract context banner */}
+              {contractText.trim().length>50
+                ?(<div className="flex items-center gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+                    <span className="text-green-500 text-lg">&#x2705;</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-green-800">Contract loaded — answers will reference your document</p>
+                      <p className="text-xs text-green-600 truncate">{contractText.length.toLocaleString()} characters · AI reads the full text to answer your question</p>
+                    </div>
+                    <button onClick={()=>{setContractText("");setRagResults(null);}} className="text-xs text-[#bbb] hover:text-red-400">Remove</button>
+                  </div>)
+                :(<div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+                    <span className="text-amber-400 text-lg">&#x26A0;</span>
+                    <p className="text-sm text-amber-700">No contract loaded — go to <b>Contract Review</b> tab and upload one first for contract-specific Q&A</p>
+                  </div>)
+              }
+
+              {/* Suggested questions */}
+              <div className="flex flex-wrap gap-1.5">
+                {(contractText.trim().length>50?[
+                  "Does this contract have a liability cap? What is it?",
+                  "What happens if either party breaches this contract?",
+                  "How can this contract be terminated?",
+                  "Are there any auto-renewal clauses?",
+                  "Who owns the intellectual property under this contract?",
+                  "What data protection obligations does this contract impose?",
+                ]:[
+                  "What are GDPR obligations for data processors?",
+                  "Is a no-liability-cap clause enforceable under German BGB?",
+                  "What does Schrems II mean for data transfers?",
+                  "What makes a non-compete clause valid in Germany?",
+                ]).map(q=>(
+                  <button key={q} onClick={()=>{setRagQuery(q);setRagResults(null);}} className="btn-outline px-2.5 py-1 rounded text-xs transition text-left">{q}</button>
+                ))}
+              </div>
+
               <div className="flex gap-2">
                 <input value={ragQuery} onChange={e=>setRagQuery(e.target.value)}
                   onKeyDown={e=>{if(e.key==="Enter")searchRAG();}}
-                  className="flex-1 rounded-lg p-3 text-sm" placeholder="e.g. What are GDPR obligations for subprocessors?"/>
+                  className="flex-1 rounded-lg p-3 text-sm" placeholder={contractText.trim().length>50?"Ask anything about this contract...":"Ask a legal question..."}/>
               </div>
               <button onClick={searchRAG} disabled={loading||!ragQuery.trim()}
                 className="btn-primary w-full py-3 rounded-lg text-sm transition">
-                {loading?"Searching...":"Ask"}</button>
+                {loading?"Searching...": contractText.trim().length>50 ? "Ask about this Contract" : "Ask"}</button>
+
               {ragResults&&(<div className="space-y-3 mt-1">
                 {ragResults.error&&<p className="text-red-600 text-sm">{ragResults.error}</p>}
-                {ragResults.chatAnswer&&(<div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-indigo-600 uppercase mb-1.5">⚖️ Answer</p>
+                {ragResults.chatAnswer&&(<div className={`rounded-xl p-4 border ${ragResults.usedContract?"bg-indigo-50 border-indigo-200":"bg-[#fafaf9] border-[#e8e5e0]"}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-xs font-semibold text-indigo-600 uppercase">⚖️ Answer</p>
+                    {ragResults.usedContract&&<span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full">Based on your contract</span>}
+                  </div>
                   <p className="text-sm text-[#333] leading-relaxed whitespace-pre-wrap">{ragResults.chatAnswer}</p>
-                  {ragResults.chatSources?.length>0&&<p className="text-xs text-[#999] mt-2 border-t border-indigo-100 pt-2">Sources: {ragResults.chatSources.join(" · ")}</p>}
+                  {ragResults.chatSources?.length>0&&<p className="text-xs text-[#999] mt-2 border-t border-indigo-100 pt-2">Also referenced: {ragResults.chatSources.join(" · ")}</p>}
                 </div>)}
                 {(ragResults.results||[]).length>0&&(<div className="space-y-2">
-                  <p className="text-xs font-semibold text-[#999] uppercase">📚 Matched Sources ({ragResults.results.length})</p>
+                  <p className="text-xs font-semibold text-[#999] uppercase">📚 Legal KB Sources ({ragResults.results.length})</p>
                   {(ragResults.results||[]).map((r,i)=>(<div key={i} className="card p-3 slide-in">
                     <div className="flex justify-between mb-1"><span className="text-sm text-indigo-600 font-medium">{r.metadata?.source||"Unknown"}</span><span className="text-xs text-[#bbb]">relevance: {Math.round((1-(r.distance||0)/2)*100)}%</span></div>
                     <p className="text-sm text-[#555]">{r.text?.substring(0,280)}</p></div>))}
