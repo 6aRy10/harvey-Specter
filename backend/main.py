@@ -823,7 +823,7 @@ async def run_pipeline(req: PipelineRequest):
         # ── STEP 8: Send technical memo to LEGAL TEAM for review
         log_step(8, "approval_agent", "notifying_legal_team")
         memo_text = memo.get("memo", "")
-        legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_URL", "")
+        legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_LEGAL") or os.getenv("SLACK_WEBHOOK_MS_SILVIA") or os.getenv("SLACK_WEBHOOK_URL", "")
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5500")
         simplify_url = f"{frontend_url}?action=simplify&matter_id={matter_id}"
         legal_msg = {
@@ -1007,7 +1007,7 @@ async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRe
     simplified = json.loads(simplify_resp.choices[0].message.content)
 
     # Send plain-English version to executive (Mr. Peter)
-    exec_webhook = _get_webhook_by_role("executive") or os.getenv("SLACK_WEBHOOK_URL", "")
+    exec_webhook = _get_webhook_by_role("executive") or os.getenv("SLACK_WEBHOOK_EXECUTIVE") or os.getenv("SLACK_WEBHOOK_DR_PETER") or os.getenv("SLACK_WEBHOOK_URL", "")
     exec_summary = simplified.get("executive_summary", "")
     plain_risks = simplified.get("plain_risks", [])
     decision = simplified.get("decision_needed", "")
