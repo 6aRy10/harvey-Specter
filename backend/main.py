@@ -413,6 +413,187 @@ async def review_uploaded_contract(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── Full 10-Step DPA Pipeline ───
+class PipelineRequest(BaseModel):
+    contract_text: str
+    jurisdiction: str | None = "Germany"
+    assignee: str | None = "Dr. Peter"
+    matter_name: str | None = "Uploaded DPA"
+
+
+@app.post("/api/pipeline/run")
+async def run_pipeline(req: PipelineRequest):
+    """
+    Full 10-step DPA agent pipeline:
+    1. Upload   — contract received
+    2. Intake   — classify matter & parties
+    3. Clauses  — extract key DPA terms
+    4. GDPR     — compliance check (parallel with 3)
+    5. Risk     — score the DPA
+    6. Redlines — drafting agent proposes fallback clauses
+    7. QA Memo  — final legal memo
+    8. Approval — Slack notification to executive
+    9. Pending  — awaiting executive sign-off
+    10. Closed  — audit trail finalised
+    """
+    from backend.integrations import slack_approval as slack
+
+    matter_id = f"DPA-{uuid.uuid4().hex[:6].upper()}"
+    audit = []
+
+    def step(num, agent, action, details=""):
+        entry = {"step": num, "agent": agent, "action": action,
+                 "details": details, "timestamp": datetime.now().isoformat()}
+        audit.append(entry)
+        return entry
+
+    try:
+        MAX_CHARS = 5000
+        text = req.contract_text[:MAX_CHARS] if len(req.contract_text) > MAX_CHARS else req.contract_text
+
+        # ── STEP 1: Received ──────────────────────────────────────────
+        step(1, "system", "contract_received", f"{len(req.contract_text):,} chars ingested")
+
+        # ── STEP 2: Intake — classify matter ─────────────────────────
+        step(2, "intake_agent", "classifying")
+        intake_resp = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are an intake agent. Classify this contract. Return JSON: {\"contract_type\":\"...\",\"parties\":[],\"jurisdiction\":\"...\",\"subject_matter\":\"...\",\"urgency\":\"HIGH|MEDIUM|LOW\"}"},
+                {"role": "user", "content": f"Contract:\n{text[:1500]}"}
+            ],
+            response_format={"type": "json_object"}, max_tokens=200, temperature=0.1
+        )
+        intake = json.loads(intake_resp.choices[0].message.content)
+        step(2, "intake_agent", "classified", f"{intake.get('contract_type','DPA')} — {intake.get('urgency','MEDIUM')} urgency")
+
+        # ── STEPS 3 + 4: Clause extraction + GDPR compliance (PARALLEL) ──
+        step(3, "clause_agent", "extracting_clauses")
+        step(4, "compliance_agent", "gdpr_check_started")
+
+        async def extract_clauses():
+            r = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Extract key DPA clauses. Return JSON: {\"clauses\":[{\"name\":\"...\",\"text\":\"...\",\"risk\":\"HIGH|MEDIUM|LOW\",\"issue\":\"...\"}]}"},
+                    {"role": "user", "content": text}
+                ],
+                response_format={"type": "json_object"}, max_tokens=600, temperature=0.1
+            )
+            return json.loads(r.choices[0].message.content)
+
+        async def gdpr_compliance():
+            r = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a GDPR compliance agent. Check this DPA for: data transfer safeguards (Schrems II), subprocessor obligations, data subject rights, breach notification, DPA Art.28 requirements. Return JSON: {\"gdpr_score\":0-10,\"transfer_mechanism\":\"...\",\"subprocessor_clause\":true/false,\"breach_notification\":true/false,\"issues\":[{\"article\":\"...\",\"issue\":\"...\",\"severity\":\"HIGH|MEDIUM|LOW\"}]}"},
+                    {"role": "user", "content": text}
+                ],
+                response_format={"type": "json_object"}, max_tokens=500, temperature=0.1
+            )
+            return json.loads(r.choices[0].message.content)
+
+        loop = asyncio.get_event_loop()
+        clauses_result, gdpr_result = await asyncio.gather(
+            loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Extract key DPA clauses. Return JSON: {\"clauses\":[{\"name\":\"...\",\"text\":\"...\",\"risk\":\"HIGH|MEDIUM|LOW\",\"issue\":\"...\"}]}"},
+                    {"role": "user", "content": text}
+                ],
+                response_format={"type": "json_object"}, max_tokens=600, temperature=0.1
+            )),
+            loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "GDPR compliance agent. Check DPA for: Schrems II transfer safeguards, subprocessor obligations, breach notification, Art.28 requirements. Return JSON: {\"gdpr_score\":7,\"transfer_mechanism\":\"SCCs\",\"subprocessor_clause\":true,\"breach_notification\":true,\"issues\":[{\"article\":\"Art.28\",\"issue\":\"...\",\"severity\":\"HIGH\"}]}"},
+                    {"role": "user", "content": text}
+                ],
+                response_format={"type": "json_object"}, max_tokens=500, temperature=0.1
+            ))
+        )
+        clauses = json.loads(clauses_result.choices[0].message.content)
+        gdpr = json.loads(gdpr_result.choices[0].message.content)
+        step(3, "clause_agent", "clauses_extracted", f"{len(clauses.get('clauses',[]))} key clauses found")
+        step(4, "compliance_agent", "gdpr_check_complete", f"GDPR score: {gdpr.get('gdpr_score','N/A')}/10 — {len(gdpr.get('issues',[]))} issues")
+
+        # ── STEP 5: Risk scoring ──────────────────────────────────────
+        step(5, "risk_agent", "scoring")
+        risk_resp = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Risk scoring agent. Return JSON: {\"risk_score\":0-10,\"risk_level\":\"HIGH|MEDIUM|LOW\",\"top_risks\":[\"...\"],\"safe_to_sign\":true/false,\"executive_summary\":\"2 sentences\"}"},
+                {"role": "user", "content": f"Clauses: {json.dumps(clauses)}\nGDPR: {json.dumps(gdpr)}\nContract snippet: {text[:1000]}"}
+            ],
+            response_format={"type": "json_object"}, max_tokens=300, temperature=0.1
+        )
+        risk = json.loads(risk_resp.choices[0].message.content)
+        step(5, "risk_agent", "risk_scored", f"Risk: {risk.get('risk_score','?')}/10 — {risk.get('risk_level','?')} — Safe to sign: {risk.get('safe_to_sign','?')}")
+
+        # ── STEP 6: Redlines ─────────────────────────────────────────
+        step(6, "drafting_agent", "drafting_redlines")
+        high_risk = [c for c in clauses.get("clauses", []) if c.get("risk") == "HIGH"]
+        redlines_resp = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a contract drafting agent. For each HIGH risk clause propose a fallback redline. Return JSON: {\"redlines\":[{\"clause\":\"...\",\"original_issue\":\"...\",\"proposed_redline\":\"...\",\"rationale\":\"...\"}]}"},
+                {"role": "user", "content": f"High risk clauses: {json.dumps(high_risk[:3])}\nGDPR issues: {json.dumps(gdpr.get('issues',[])[:3])}"}
+            ],
+            response_format={"type": "json_object"}, max_tokens=600, temperature=0.2
+        )
+        redlines = json.loads(redlines_resp.choices[0].message.content)
+        step(6, "drafting_agent", "redlines_ready", f"{len(redlines.get('redlines',[]))} redlines proposed")
+
+        # ── STEP 7: QA Memo ───────────────────────────────────────────
+        step(7, "qa_agent", "generating_memo")
+        memo_resp = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a QA agent. Write a concise legal memo (3-4 paragraphs) for the executive approver. Return JSON: {\"memo\":\"...\",\"recommendation\":\"APPROVE|REJECT|NEGOTIATE\",\"conditions\":[\"...\"],\"verified_by\":\"Harveyy AI QA Agent\"}"},
+                {"role": "user", "content": f"Matter: {req.matter_name}\nRisk: {json.dumps(risk)}\nGDPR issues: {json.dumps(gdpr.get('issues',[]))}\nRedlines available: {len(redlines.get('redlines',[]))}"}
+            ],
+            response_format={"type": "json_object"}, max_tokens=500, temperature=0.2
+        )
+        memo = json.loads(memo_resp.choices[0].message.content)
+        step(7, "qa_agent", "memo_complete", f"Recommendation: {memo.get('recommendation','?')}")
+
+        # ── STEP 8: Slack approval notification ───────────────────────
+        step(8, "approval_agent", "sending_slack_notification")
+        memo_text = memo.get("memo", "")
+        approval_result = slack.send_approval_request(
+            matter_id=matter_id,
+            doc_type="dpa_review_memo",
+            content=memo_text,
+            summary=f"[{risk.get('risk_level','?')} RISK] {req.matter_name} — Recommendation: {memo.get('recommendation','?')}. GDPR score: {gdpr.get('gdpr_score','?')}/10. {len(redlines.get('redlines',[]))} redlines ready.",
+            recipient=req.assignee or "Dr. Peter",
+        )
+        approval_id = approval_result.get("approval_id", "N/A")
+        step(8, "approval_agent", "slack_sent", f"Approval ID: {approval_id} — Sent to {req.assignee}")
+
+        # ── STEPS 9-10: Pending approval + audit close ────────────────
+        step(9, "system", "pending_executive_approval", f"Matter {matter_id} awaiting sign-off by {req.assignee}")
+        step(10, "system", "audit_trail_finalised", f"Pipeline complete — {len(audit)} steps logged")
+
+        return {
+            "matter_id": matter_id,
+            "status": "pending_approval",
+            "pipeline_complete": True,
+            "steps_completed": 10,
+            "intake": intake,
+            "clauses": clauses,
+            "gdpr": gdpr,
+            "risk": risk,
+            "redlines": redlines,
+            "memo": memo,
+            "approval_id": approval_id,
+            "audit_trail": audit,
+        }
+
+    except Exception as e:
+        step(0, "system", "pipeline_error", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ─── Templates ───
 @app.get("/api/templates")
 async def list_templates():

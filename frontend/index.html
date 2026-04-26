@@ -225,6 +225,47 @@ function ContractViewer({text,clauses=[]}){
   );
 }
 
+const PIPELINE_STEPS=[
+  {num:1,label:"Contract Received",agent:"system"},
+  {num:2,label:"Intake Agent — Classify Matter",agent:"intake_agent"},
+  {num:3,label:"Clause Extraction — Key DPA Terms",agent:"clause_agent"},
+  {num:4,label:"GDPR Compliance Check",agent:"compliance_agent"},
+  {num:5,label:"Risk Agent — Score DPA",agent:"risk_agent"},
+  {num:6,label:"Drafting Agent — Redlines",agent:"drafting_agent"},
+  {num:7,label:"QA Agent — Final Memo",agent:"qa_agent"},
+  {num:8,label:"Approval Agent — Slack Notification",agent:"approval_agent"},
+  {num:9,label:"Pending Executive Approval",agent:"system"},
+  {num:10,label:"Matter Closed — Audit Trail",agent:"system"},
+];
+
+function PipelineProgress({running,pipelineResult,animStep}){
+  const audit=pipelineResult?.audit_trail||[];
+  const completedSteps=new Set(audit.map(a=>a.step));
+  return(
+    <div className="space-y-1.5">
+      {PIPELINE_STEPS.map(s=>{
+        const done=completedSteps.has(s.num);
+        const active=running&&animStep===s.num;
+        const auditEntry=audit.filter(a=>a.step===s.num).pop();
+        return(
+          <div key={s.num} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-all ${done?"bg-green-50 border border-green-100":active?"bg-indigo-50 border border-indigo-200 animate-pulse":"bg-[#fafaf9] border border-[#f0ede8]"}`}>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-bold ${done?"bg-green-500 text-white":active?"bg-indigo-500 text-white":"bg-[#e8e5e0] text-[#999]"}`}>
+              {done?"✓":s.num}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-medium ${done?"text-green-800":active?"text-indigo-700":"text-[#555]"}`}>{s.label}</p>
+              {auditEntry?.details&&<p className="text-[10px] text-[#888] mt-0.5 truncate">{auditEntry.details}</p>}
+            </div>
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${done?"bg-green-100 text-green-700":active?"bg-indigo-100 text-indigo-600":"bg-[#f0ede8] text-[#bbb]"}`}>
+              {done?"done":active?"running...":"pending"}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function AgentDot({active,name}){
   return(<div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${active?"bg-green-400 agent-active":"bg-gray-700"}`}/><span className="text-[11px] text-gray-500">{name}</span></div>);
 }
@@ -276,6 +317,9 @@ function Dashboard({onBack}){
     {id:"u8",name:"Harveyy AI",role:"AI Legal Agent",avatar:"H",permissions:["review","draft","research","qa"],status:"online"},
   ]);
   const[showTeam,setShowTeam]=useState(false);
+  const[pipelineRunning,setPipelineRunning]=useState(false);
+  const[pipelineResult,setPipelineResult]=useState(null);
+  const[pipelineAnimStep,setPipelineAnimStep]=useState(0);
   const[triageCases,setTriageCases]=useState([
     {id:"tc1",title:"BMW DPA — Data Transfer Clause",contract:"BMW_DPA_v2.pdf",type:"DPA",risk:"HIGH",deadline:"2026-04-27T09:00",assignee:"Dr. Andreas",status:"escalated",reason:"Cross-border transfer clause violates Schrems II — needs CEO sign-off before BMW deadline",hoursLeft:8},
     {id:"tc2",title:"Client NDA — Non-Compete Scope",contract:"Client_NDA_Draft.docx",type:"NDA",risk:"HIGH",deadline:"2026-04-27T14:00",assignee:"Ms. Silvia",status:"pending_review",reason:"Non-compete clause exceeds 2-year BGB limit — client meeting tomorrow at 2pm",hoursLeft:13},
@@ -310,6 +354,22 @@ function Dashboard({onBack}){
     if(!r.ok)throw new Error(`API ${r.status}`);setResult(await r.json());}
     catch(e){setResult({error:e.name==="AbortError"?"Request timed out. Try a shorter contract or click Skip to bypass intake.":e.message});}
     finally{clearTimeout(timer);setLoading(false);}
+  };
+
+  const runPipeline=async()=>{
+    if(!contractText){alert("Upload a contract first.");return;}
+    setPipelineRunning(true);setPipelineResult(null);setPipelineAnimStep(1);
+    let animInterval=setInterval(()=>setPipelineAnimStep(s=>s<9?s+1:s),3500);
+    try{
+      const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),180000);
+      const r=await fetch(`${API}/api/pipeline/run`,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contract_text:contractText,jurisdiction:"Germany",assignee:"Dr. Peter",matter_name:contractText.substring(0,40)+"..."}),signal:ctrl.signal});
+      clearTimeout(t);
+      if(!r.ok)throw new Error(`Pipeline error ${r.status}`);
+      const d=await r.json();
+      setPipelineResult(d);setPipelineAnimStep(10);
+    }catch(err){setPipelineResult({error:err.message});}
+    finally{clearInterval(animInterval);setPipelineRunning(false);}
   };
 
   const loadSample=()=>{setContractText(`NON-DISCLOSURE AGREEMENT
@@ -646,11 +706,15 @@ state and federal courts located in Wilmington, Delaware.`);};
                     )}
                   </div>))}
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={()=>{setIntakeStep(2);callAPI("/api/review",{contract_text:contractText,context:intakeContext()})}} disabled={loading}
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={()=>{setIntakeStep(2);callAPI("/api/review",{contract_text:contractText,context:intakeContext()})}} disabled={loading||pipelineRunning}
                     className="btn-primary flex-1 py-2.5 rounded-lg text-xs transition">
                     {loading?"Analyzing...":"Analyze Contract"}</button>
-                  <button onClick={()=>{setIntakeStep(2);callAPI("/api/review",{contract_text:contractText})}} disabled={loading}
+                  <button onClick={()=>{setIntakeStep(2);runPipeline();}} disabled={loading||pipelineRunning}
+                    className="py-2.5 px-3 rounded-lg text-[11px] transition font-medium border-2 border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5">
+                    {pipelineRunning?<><span className="inline-block w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"/>Running...</>:"⚡ Full Pipeline"}
+                  </button>
+                  <button onClick={()=>{setIntakeStep(2);callAPI("/api/review",{contract_text:contractText})}} disabled={loading||pipelineRunning}
                     className="btn-outline px-3 py-2.5 rounded-lg text-[11px] transition">Skip</button>
                 </div>
               </div>)}
@@ -955,6 +1019,78 @@ state and federal courts located in Wilmington, Delaware.`);};
 
           {/* ─── RIGHT: RESULTS (3 cols) ─── */}
           <div className="lg:col-span-3 space-y-4">
+
+            {/* Pipeline Panel */}
+            {(pipelineRunning||pipelineResult)&&(
+              <div className="card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`w-2 h-2 rounded-full ${pipelineRunning?"bg-indigo-500 animate-pulse":"bg-green-500"}`}/>
+                  <h3 className="card-header text-base">10-Step DPA Pipeline</h3>
+                  {pipelineResult?.matter_id&&<span className="text-[10px] font-mono text-[#999] ml-auto">{pipelineResult.matter_id}</span>}
+                </div>
+                <PipelineProgress running={pipelineRunning} pipelineResult={pipelineResult} animStep={pipelineAnimStep}/>
+
+                {pipelineResult&&!pipelineResult.error&&(
+                  <div className="mt-4 space-y-3">
+                    {/* Risk + Recommendation banner */}
+                    <div className={`rounded-lg p-3 flex items-center gap-3 ${pipelineResult.risk?.risk_level==="HIGH"?"bg-red-50 border border-red-200":pipelineResult.risk?.risk_level==="MEDIUM"?"bg-amber-50 border border-amber-200":"bg-green-50 border border-green-200"}`}>
+                      <ScoreRing score={pipelineResult.risk?.risk_score||0}/>
+                      <div>
+                        <p className="text-xs font-semibold text-[#333]">{pipelineResult.memo?.recommendation||"NEGOTIATE"} — {pipelineResult.risk?.risk_level||"?"} RISK</p>
+                        <p className="text-[11px] text-[#666] mt-0.5">{pipelineResult.risk?.executive_summary||""}</p>
+                      </div>
+                    </div>
+
+                    {/* GDPR Card */}
+                    {pipelineResult.gdpr&&(
+                      <div className="bg-[#fafaf9] rounded-lg p-3 border border-[#e8e5e0]">
+                        <p className="text-[10px] font-semibold text-[#999] uppercase mb-1.5">GDPR Compliance</p>
+                        <div className="flex gap-3 flex-wrap text-[11px]">
+                          <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">Score: {pipelineResult.gdpr.gdpr_score}/10</span>
+                          <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">Transfer: {pipelineResult.gdpr.transfer_mechanism||"?"}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${pipelineResult.gdpr.subprocessor_clause?"bg-green-50 text-green-700":"bg-red-50 text-red-700"}`}>Subprocessor: {pipelineResult.gdpr.subprocessor_clause?"✓":"✗"}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${pipelineResult.gdpr.breach_notification?"bg-green-50 text-green-700":"bg-red-50 text-red-700"}`}>Breach notif.: {pipelineResult.gdpr.breach_notification?"✓":"✗"}</span>
+                        </div>
+                        {(pipelineResult.gdpr.issues||[]).map((issue,i)=>(<p key={i} className="text-[11px] text-[#555] mt-1.5">⚠️ <b>{issue.article}</b>: {issue.issue}</p>))}
+                      </div>
+                    )}
+
+                    {/* Redlines */}
+                    {(pipelineResult.redlines?.redlines||[]).length>0&&(
+                      <details className="bg-[#fafaf9] rounded-lg border border-[#e8e5e0]">
+                        <summary className="px-3 py-2.5 text-xs font-semibold text-[#333] cursor-pointer">✏️ Proposed Redlines ({pipelineResult.redlines.redlines.length})</summary>
+                        <div className="px-3 pb-3 space-y-2">
+                          {pipelineResult.redlines.redlines.map((r,i)=>(<div key={i} className="border-t border-[#f0ede8] pt-2">
+                            <p className="text-[11px] font-medium text-[#333]">{r.clause}</p>
+                            <p className="text-[10px] text-red-600 mt-0.5">Issue: {r.original_issue}</p>
+                            <p className="text-[10px] text-green-700 mt-0.5 bg-green-50 rounded p-1.5">{r.proposed_redline}</p>
+                          </div>))}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* QA Memo */}
+                    {pipelineResult.memo?.memo&&(
+                      <details className="bg-[#fafaf9] rounded-lg border border-[#e8e5e0]">
+                        <summary className="px-3 py-2.5 text-xs font-semibold text-[#333] cursor-pointer">📄 QA Legal Memo</summary>
+                        <p className="px-3 pb-3 text-[11px] text-[#555] leading-relaxed">{pipelineResult.memo.memo}</p>
+                      </details>
+                    )}
+
+                    {/* Approval status */}
+                    <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-100 flex items-center gap-2">
+                      <span className="text-sm">🔔</span>
+                      <div>
+                        <p className="text-[11px] font-semibold text-indigo-800">Slack notification sent to Dr. Peter</p>
+                        <p className="text-[10px] text-indigo-600">Approval ID: {pipelineResult.approval_id} — Awaiting executive sign-off</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {pipelineResult?.error&&<p className="text-xs text-red-600 mt-3">{pipelineResult.error}</p>}
+              </div>
+            )}
+
             {loading&&(<div className="card p-10 text-center">
               <div className="inline-block w-6 h-6 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin mb-3"/>
               <p className="text-[#888] text-sm">Agents are processing your request...</p>
