@@ -822,18 +822,28 @@ class ApprovalDecisionRequest(BaseModel):
     comment: str = ""
 
 
+def _exec_decision_notify(matter_id: str, decision: str, comment: str, emoji: str):
+    """Store decision and notify legal team via Slack."""
+    data = _pipeline_store.get(matter_id, {})
+    matter_name = data.get("matter_name", matter_id)
+    _pipeline_store[matter_id]["approval_status"] = decision
+    _pipeline_store[matter_id]["approval_comment"] = comment
+    _pipeline_store[matter_id][f"{decision.lower()}_at"] = datetime.now().isoformat()
+    legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_URL", "")
+    if legal_webhook:
+        label = {"APPROVED": "APPROVED ✅", "REJECTED": "REJECTED ❌", "NEGOTIATE": "SENT BACK FOR CHANGES ✏️"}.get(decision, decision)
+        msg = f"{emoji} *Dr. Peter has {label}*\n*Matter:* {matter_name} (`{matter_id}`)"
+        if comment:
+            msg += f"\n*His note:* _{comment}_"
+        _send_slack_raw(legal_webhook, {"text": msg})
+
+
 @app.post("/api/approvals/{matter_id}/approve")
 async def approve_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
     """Executive approves the matter."""
     if matter_id not in _pipeline_store:
         raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
-    _pipeline_store[matter_id]["approval_status"] = "APPROVED"
-    _pipeline_store[matter_id]["approval_comment"] = req.comment
-    _pipeline_store[matter_id]["approved_at"] = datetime.now().isoformat()
-    # Notify legal team via Slack
-    legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_URL", "")
-    if legal_webhook:
-        _send_slack_raw(legal_webhook, {"text": f"✅ *Matter {matter_id} APPROVED* by Dr. Peter\nComment: {req.comment or '(none)'}"})
+    _exec_decision_notify(matter_id, "APPROVED", req.comment or "", "✅")
     return {"matter_id": matter_id, "decision": "APPROVED", "comment": req.comment}
 
 
@@ -842,13 +852,17 @@ async def reject_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalD
     """Executive rejects the matter."""
     if matter_id not in _pipeline_store:
         raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
-    _pipeline_store[matter_id]["approval_status"] = "REJECTED"
-    _pipeline_store[matter_id]["approval_comment"] = req.comment
-    _pipeline_store[matter_id]["rejected_at"] = datetime.now().isoformat()
-    legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_URL", "")
-    if legal_webhook:
-        _send_slack_raw(legal_webhook, {"text": f"❌ *Matter {matter_id} REJECTED* by Dr. Peter\nReason: {req.comment or '(none)'}"})
+    _exec_decision_notify(matter_id, "REJECTED", req.comment or "", "❌")
     return {"matter_id": matter_id, "decision": "REJECTED", "comment": req.comment}
+
+
+@app.post("/api/approvals/{matter_id}/negotiate")
+async def negotiate_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
+    """Executive sends back for changes."""
+    if matter_id not in _pipeline_store:
+        raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
+    _exec_decision_notify(matter_id, "NEGOTIATE", req.comment or "", "✏️")
+    return {"matter_id": matter_id, "decision": "NEGOTIATE", "comment": req.comment}
 
 
 class SimplifyRequest(BaseModel):

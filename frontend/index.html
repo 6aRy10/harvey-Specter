@@ -854,68 +854,201 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
 
   if(approveData&&!approveDecided){
     const sm=approveData.simplified_memo||approveData.simplified||{};
-    const rec=approveData.recommendation||sm.recommendation||"?";
+    const rec=approveData.recommendation||sm.recommendation||"NEGOTIATE";
     const risks=approveData.plain_risks||sm.plain_risks||[];
-    const summary=approveData.executive_summary||sm.executive_summary||approveData.memo?.memo?.substring(0,400)||"";
-    const decision=approveData.decision_needed||sm.decision_needed||(rec==="NEGOTIATE"?"Negotiate and return for re-review":rec==="REJECT"?"Reject this contract":"Approve to proceed");
-    const recColors={APPROVE:"bg-green-50 border-green-300 text-green-800",REJECT:"bg-red-50 border-red-300 text-red-800",NEGOTIATE:"bg-amber-50 border-amber-300 text-amber-800"};
+    const summary=approveData.executive_summary||sm.executive_summary||approveData.memo?.memo?.substring(0,500)||"";
+    const decisionNeeded=approveData.decision_needed||sm.decision_needed||"Review and decide";
+    const riskScore=approveData.risk?.risk_score||0;
+    const riskLevel=approveData.risk?.risk_level||"MEDIUM";
+    const topRisks=approveData.risk?.top_risks||[];
+    const intake=approveData.intake||{};
+    const clauses=(approveData.clauses?.clauses||[]).slice(0,5);
+    const redlines=(approveData.redlines?.redlines||[]).slice(0,3);
+    const conditions=approveData.memo?.conditions||[];
+    const gdprScore=approveData.gdpr?.gdpr_score;
+    const matterName=approveData.matter_name||approveData.matter_id||"Contract";
+    const parties=(intake.parties||[]).join(" & ")||"Parties not identified";
+
+    const riskConfig={
+      HIGH:{bg:"bg-red-50",border:"border-red-300",bar:"bg-red-500",text:"text-red-700",badge:"bg-red-100 text-red-700 border-red-200",icon:"🔴",label:"High Risk — Needs Careful Review"},
+      MEDIUM:{bg:"bg-amber-50",border:"border-amber-300",bar:"bg-amber-400",text:"text-amber-700",badge:"bg-amber-100 text-amber-700 border-amber-200",icon:"🟡",label:"Medium Risk — Some Concerns"},
+      LOW:{bg:"bg-green-50",border:"border-green-200",bar:"bg-green-500",text:"text-green-700",badge:"bg-green-100 text-green-700 border-green-200",icon:"🟢",label:"Low Risk — Looks Acceptable"},
+    };
+    const rc=riskConfig[riskLevel]||riskConfig.MEDIUM;
+    const recConfig={
+      APPROVE:{bg:"bg-green-600",hover:"hover:bg-green-700",icon:"✅",label:"Approve this Contract"},
+      REJECT:{bg:"bg-red-600",hover:"hover:bg-red-700",icon:"❌",label:"Reject this Contract"},
+      NEGOTIATE:{bg:"bg-amber-500",hover:"hover:bg-amber-600",icon:"✏️",label:"Send Back for Changes"},
+    };
+    const rcc=recConfig[rec]||recConfig.NEGOTIATE;
+
     return(
-      <div className="min-h-screen dash-light flex items-center justify-center p-6">
-        <div className="max-w-2xl w-full space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="font-harvey text-2xl text-[#1a1a1a]">Harveyy</span>
-            <span className="text-[#bbb] text-sm">/ Executive Approval</span>
+      <div className="min-h-screen" style={{background:"#f7f5f2"}}>
+        {/* Top bar */}
+        <div className="bg-white border-b border-[#e8e5e0] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            <span className="font-harvey text-xl text-[#1a1a1a]">Harveyy</span>
+            <span className="text-[#ddd]">/</span>
+            <span className="text-sm text-[#888]">Contract Decision</span>
           </div>
-          <div className="card p-6 space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-harvey text-xl text-[#1a1a1a]">Contract Decision Required</h2>
-                <p className="text-xs text-[#888] mt-0.5 font-mono">{approveData.matter_id}</p>
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${rc.badge}`}>{rc.icon} {riskLevel} RISK</span>
+        </div>
+
+        <div className="max-w-3xl mx-auto px-4 py-8 space-y-5">
+
+          {/* Hero: What decision is needed */}
+          <div className={`rounded-2xl p-6 border-2 ${rc.border} ${rc.bg}`}>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#999] mb-1">Action Required</p>
+            <h1 className="font-harvey text-2xl text-[#1a1a1a] leading-snug mb-2">{matterName}</h1>
+            <p className="text-sm text-[#555] mb-4">{parties} · {intake.contract_type||"Contract"} · {intake.jurisdiction||"International"}</p>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex-1 bg-white/60 rounded-full h-2.5 overflow-hidden">
+                <div className={`h-full rounded-full ${rc.bar} transition-all`} style={{width:`${Math.round(riskScore*10)}%`}}/>
               </div>
-              <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${(recColors[rec]||"bg-[#f0ede8] text-[#555] border-[#e0ddd8]")}`}>{rec}</span>
+              <span className={`text-sm font-bold ${rc.text}`}>{riskScore}/10 risk</span>
             </div>
-            <div className="bg-[#fafaf9] rounded-xl p-4 border border-[#e8e5e0]">
-              <p className="text-xs font-semibold text-[#999] uppercase mb-1.5">Summary</p>
-              <p className="text-sm text-[#333] leading-relaxed">{summary}</p>
-            </div>
-            {risks.length>0&&(
-              <div>
-                <p className="text-xs font-semibold text-[#999] uppercase mb-2">Key Risks</p>
-                <ul className="space-y-1.5">{risks.map((r,i)=>(<li key={i} className="flex gap-2 text-sm text-[#444]"><span className="text-amber-500 mt-0.5 flex-shrink-0">⚠</span>{r}</li>))}</ul>
+            <p className={`text-xs font-medium ${rc.text}`}>{rc.label}</p>
+          </div>
+
+          {/* Plain English Summary */}
+          <div className="bg-white rounded-2xl p-6 border border-[#e8e5e0] shadow-sm space-y-3">
+            <h2 className="font-semibold text-base text-[#1a1a1a]">📋 What Is This Contract?</h2>
+            <p className="text-sm text-[#444] leading-relaxed">{summary}</p>
+            {decisionNeeded&&(
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 mt-2">
+                <p className="text-sm font-medium text-indigo-800">👉 {decisionNeeded}</p>
               </div>
             )}
-            {decision&&<p className="text-sm font-medium text-[#333] bg-indigo-50 border border-indigo-100 rounded-lg p-3">{decision}</p>}
-            <div>
-              <p className="text-xs font-semibold text-[#999] uppercase mb-1.5">Comment (optional)</p>
-              <textarea value={approveComment} onChange={e=>setApproveComment(e.target.value)} rows={2}
-                className="w-full rounded-lg p-3 text-sm resize-none border border-[#e8e5e0]" placeholder="Add a note for the legal team..."/>
+          </div>
+
+          {/* Risks in plain language */}
+          {(risks.length>0||topRisks.length>0)&&(
+            <div className="bg-white rounded-2xl p-6 border border-[#e8e5e0] shadow-sm space-y-3">
+              <h2 className="font-semibold text-base text-[#1a1a1a]">⚠️ What Could Go Wrong?</h2>
+              <p className="text-xs text-[#999]">These are the main things to watch out for, explained in plain terms:</p>
+              <ul className="space-y-2.5">
+                {(risks.length>0?risks:topRisks).map((r,i)=>(
+                  <li key={i} className="flex gap-3 bg-[#fafaf9] rounded-xl p-3 border border-[#f0ede8]">
+                    <span className="text-lg flex-shrink-0">{i===0?"🔴":i===1?"🟡":"🟠"}</span>
+                    <p className="text-sm text-[#333] leading-relaxed">{r}</p>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="flex gap-3 pt-1">
+          )}
+
+          {/* What Legal Recommends */}
+          <div className="bg-white rounded-2xl p-6 border border-[#e8e5e0] shadow-sm space-y-3">
+            <h2 className="font-semibold text-base text-[#1a1a1a]">⚖️ What Our Legal Team Says</h2>
+            <div className={`rounded-xl p-4 flex items-center gap-4 ${rec==="APPROVE"?"bg-green-50 border border-green-200":rec==="REJECT"?"bg-red-50 border border-red-200":"bg-amber-50 border border-amber-200"}`}>
+              <span className="text-3xl">{rcc.icon}</span>
+              <div>
+                <p className={`text-base font-bold ${rec==="APPROVE"?"text-green-800":rec==="REJECT"?"text-red-800":"text-amber-800"}`}>{rcc.label}</p>
+                <p className={`text-sm mt-0.5 ${rec==="APPROVE"?"text-green-700":rec==="REJECT"?"text-red-700":"text-amber-700"}`}>
+                  {rec==="APPROVE"?"Legal has reviewed and cleared this contract for signing."
+                    :rec==="REJECT"?"Legal advises against signing. The risks outweigh the benefits."
+                    :"Legal wants some clauses changed before you sign."}
+                </p>
+              </div>
+            </div>
+            {conditions.length>0&&(
+              <div className="space-y-1.5 pt-1">
+                <p className="text-xs font-semibold text-[#999] uppercase">Conditions before signing:</p>
+                {conditions.map((c,i)=>(<p key={i} className="text-sm text-[#444] flex gap-2"><span className="text-indigo-400 font-bold flex-shrink-0">{i+1}.</span>{c}</p>))}
+              </div>
+            )}
+          </div>
+
+          {/* Contract Details — collapsible */}
+          <details className="bg-white rounded-2xl border border-[#e8e5e0] shadow-sm overflow-hidden">
+            <summary className="px-6 py-4 cursor-pointer flex items-center justify-between hover:bg-[#fafaf9] transition">
+              <h2 className="font-semibold text-base text-[#1a1a1a]">📄 View Contract Details</h2>
+              <span className="text-sm text-[#999]">Tap to expand</span>
+            </summary>
+            <div className="px-6 pb-6 space-y-4 border-t border-[#f0ede8] pt-4">
+              {/* Stats row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-[#fafaf9] rounded-xl p-3 text-center border border-[#f0ede8]">
+                  <p className="text-xl font-bold text-[#1a1a1a]">{clauses.length}</p>
+                  <p className="text-xs text-[#999] mt-0.5">Clauses flagged</p>
+                </div>
+                <div className="bg-[#fafaf9] rounded-xl p-3 text-center border border-[#f0ede8]">
+                  <p className="text-xl font-bold text-[#1a1a1a]">{redlines.length}</p>
+                  <p className="text-xs text-[#999] mt-0.5">Changes proposed</p>
+                </div>
+                {gdprScore!=null&&<div className="bg-[#fafaf9] rounded-xl p-3 text-center border border-[#f0ede8]">
+                  <p className="text-xl font-bold text-[#1a1a1a]">{gdprScore}/10</p>
+                  <p className="text-xs text-[#999] mt-0.5">GDPR score</p>
+                </div>}
+              </div>
+
+              {/* Flagged clauses */}
+              {clauses.length>0&&(<div className="space-y-2">
+                <p className="text-xs font-semibold text-[#999] uppercase">Flagged Clauses</p>
+                {clauses.map((c,i)=>(
+                  <div key={i} className="flex gap-3 items-start p-3 rounded-xl border border-[#f0ede8] bg-[#fafaf9]">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5 ${c.risk==="HIGH"?"bg-red-100 text-red-700":c.risk==="MEDIUM"?"bg-amber-100 text-amber-700":"bg-green-100 text-green-700"}`}>{c.risk}</span>
+                    <div><p className="text-sm font-medium text-[#333]">{c.name}</p><p className="text-xs text-[#666] mt-0.5">{c.issue}</p></div>
+                  </div>
+                ))}
+              </div>)}
+
+              {/* Proposed changes */}
+              {redlines.length>0&&(<div className="space-y-2">
+                <p className="text-xs font-semibold text-[#999] uppercase">What Legal Wants Changed</p>
+                {redlines.map((r,i)=>(
+                  <div key={i} className="p-3 rounded-xl border border-green-200 bg-green-50 space-y-1">
+                    <p className="text-sm font-semibold text-[#333]">{r.clause}</p>
+                    <p className="text-xs text-[#666]">{r.original_issue}</p>
+                    <p className="text-xs text-green-800 bg-green-100 rounded p-2 mt-1">✏️ Proposed: {r.proposed_redline?.substring(0,160)}</p>
+                  </div>
+                ))}
+              </div>)}
+            </div>
+          </details>
+
+          {/* Decision */}
+          <div className="bg-white rounded-2xl p-6 border border-[#e8e5e0] shadow-sm space-y-4">
+            <h2 className="font-semibold text-base text-[#1a1a1a]">Your Decision</h2>
+            <textarea value={approveComment} onChange={e=>setApproveComment(e.target.value)} rows={2}
+              className="w-full rounded-xl p-4 text-sm resize-none border border-[#e8e5e0] focus:border-[#999] focus:outline-none"
+              placeholder="Optional note to the legal team — e.g. 'Approve but negotiate liability cap down to €500k'"/>
+            <div className="grid grid-cols-3 gap-3">
               <button onClick={()=>doApproval("approve")} disabled={approveLoading}
-                className="flex-1 py-3.5 rounded-xl text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition">
-                ✅ Approve
+                className="py-4 rounded-xl text-sm font-bold bg-green-600 hover:bg-green-700 text-white transition flex flex-col items-center gap-1">
+                <span className="text-xl">✅</span>Approve
+              </button>
+              <button onClick={()=>doApproval("negotiate")} disabled={approveLoading}
+                className="py-4 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-600 text-white transition flex flex-col items-center gap-1">
+                <span className="text-xl">✏️</span>Request Changes
               </button>
               <button onClick={()=>doApproval("reject")} disabled={approveLoading}
-                className="flex-1 py-3.5 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-700 text-white transition">
-                ❌ Reject
+                className="py-4 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-700 text-white transition flex flex-col items-center gap-1">
+                <span className="text-xl">❌</span>Reject
               </button>
             </div>
-            <p className="text-xs text-center text-[#bbb]">Your decision will notify the legal team via Slack immediately.</p>
+            {approveLoading&&<p className="text-xs text-center text-[#999] animate-pulse">Sending decision to legal team...</p>}
+            <p className="text-xs text-center text-[#bbb]">Your decision is sent to the legal team via Slack immediately.</p>
           </div>
+
         </div>
       </div>
     );
   }
 
   if(approveDecided){
+    const icons={approve:"✅",negotiate:"✏️",reject:"❌"};
+    const labels={approve:"Contract Approved",negotiate:"Changes Requested",reject:"Contract Rejected"};
+    const msgs={approve:"Great. Legal team has been notified and will proceed with signing.",negotiate:"Legal team will revise the clauses and come back to you.",reject:"Legal team has been notified. This contract will not proceed."};
     return(
-      <div className="min-h-screen dash-light flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center space-y-4">
-          <p className="text-5xl">{approveDecided==="approve"?"✅":"❌"}</p>
-          <h2 className="font-harvey text-2xl text-[#1a1a1a]">Matter {approveDecided==="approve"?"Approved":"Rejected"}</h2>
-          <p className="text-sm text-[#888]">The legal team has been notified via Slack.{approveComment&&` Your comment: "${approveComment}"`}</p>
+      <div className="min-h-screen" style={{background:"#f7f5f2"}}>
+        <div className="max-w-md mx-auto px-4 pt-24 text-center space-y-5">
+          <p className="text-6xl">{icons[approveDecided]||"✅"}</p>
+          <h2 className="font-harvey text-3xl text-[#1a1a1a]">{labels[approveDecided]||"Done"}</h2>
+          <p className="text-base text-[#666] leading-relaxed">{msgs[approveDecided]||""}{approveComment&&<><br/><span className="text-sm text-[#999] italic">Your note: "{approveComment}"</span></>}</p>
+          <p className="text-sm text-[#bbb]">You can close this window.</p>
           <button onClick={()=>{setApproveData(null);setApproveDecided(null);window.location.hash="";}}
-            className="btn-primary px-6 py-2.5 rounded-lg text-sm">Back to Dashboard</button>
+            className="btn-primary px-8 py-3 rounded-xl text-sm font-medium">Back to Dashboard</button>
         </div>
       </div>
     );
