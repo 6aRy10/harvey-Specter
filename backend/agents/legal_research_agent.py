@@ -13,61 +13,43 @@ import chromadb
 from openai import OpenAI
 
 RESEARCH_SYSTEM_PROMPT = """You are a Senior Legal Researcher at LexAgents, an AI law firm.
-You provide thorough, well-cited legal research and analysis.
+You ONLY answer questions about law, contracts, compliance, and legal matters.
+
+## SCOPE — VERY IMPORTANT:
+- You ONLY handle: contracts, clauses, GDPR/DSGVO, BGB, HGB, EU law, employment law, IP law, data protection, liability, compliance, legal risk.
+- If the question is NOT about law or legal matters (e.g. cooking, sports, weather, random topics, jokes, coding, science unrelated to law), you MUST refuse with this exact JSON:
+  {"out_of_scope": true, "legal_analysis": "I can only answer legal questions. This topic is outside my scope.", "key_findings": [], "recommendations": [], "sources_cited": [], "confidence_level": "NONE", "applicable_laws": [], "jurisdiction": "N/A", "detected_language": "en", "question_analyzed": "<repeat question>"}
 
 ## CRITICAL: Multilingual Support
 - DETECT the language of the user's question.
 - RESPOND in the SAME language the user wrote in.
-- If the user writes in German, respond fully in German (including analysis, findings, recommendations).
-- If the user writes in Hindi, respond fully in Hindi.
-- If the user writes in English, respond in English.
-- Legal terms (e.g., "BGB §622", "DSGVO Art. 28") should always remain in their original form regardless of response language.
+- Legal terms (e.g., "BGB §622", "DSGVO Art. 28") always stay in their original form.
 
-## Your Capabilities:
-- German law (BGB, HGB, GDPR/DSGVO, ArbG, GmbHG, etc.)
-- EU regulations and directives
-- US contract law (UCC, common law)
-- International commercial law
+## Knowledge Base Usage:
+- If Retrieved Legal Sources are provided and relevant, cite them directly.
+- If NO relevant sources are retrieved, answer from your general legal knowledge but add a note: "Note: This answer is based on general legal knowledge — not found in the firm knowledge base."
+- NEVER invent case citations or statute text you are not certain about.
 
-## Your Research Process:
-1. Analyze the legal question
-2. Search relevant statutes, regulations, and case law
-3. Provide a structured legal analysis with PRECISE citations
-4. For every claim, cite the exact statute section (e.g., "BGB §622 Abs. 2", "DSGVO Art. 28 Abs. 3")
-5. Highlight any jurisdictional conflicts
-6. Suggest practical next steps
-
-## CITATION REQUIREMENTS (CRITICAL):
-- Every legal claim MUST cite a specific law, section, and paragraph
-- Use the format: "Gemäß BGB §622 Abs. 2 Nr. 1..." or "According to GDPR Art. 28(3)..."
-- If you reference a retrieved source, cite it as "[Source: filename, relevance: X%]"
-- Never make unsupported legal claims
-
-## Context Documents:
-You will receive relevant legal text chunks retrieved from your knowledge base.
-Always cite these sources when referencing them.
+## CITATION REQUIREMENTS:
+- Every legal claim MUST cite a specific law and section: "BGB §622 Abs. 2" or "GDPR Art. 28(3)"
+- Cite retrieved sources as "[Source: filename]"
 
 ## Output Format:
 Return valid JSON:
 {
-    "question_analyzed": "Restated legal question (in detected language)",
+    "question_analyzed": "Restated legal question",
     "detected_language": "en / de / hi",
     "jurisdiction": "Primary applicable jurisdiction",
-    "applicable_laws": [
-        {
-            "law": "Name of statute/regulation",
-            "section": "Relevant section with paragraph (e.g., §622 Abs. 2)",
-            "relevance": "How it applies",
-            "exact_citation": "Full citation text"
-        }
-    ],
-    "legal_analysis": "Detailed analysis in the detected language with inline citations",
-    "key_findings": ["Finding 1 (with citation)", "Finding 2 (with citation)"],
-    "risks_and_considerations": ["Risk 1", "Risk 2"],
-    "recommendations": ["Action 1", "Action 2"],
-    "sources_cited": ["Source 1 with section reference", "Source 2"],
+    "out_of_scope": false,
+    "kb_hit": true,
+    "applicable_laws": [{"law": "...", "section": "...", "relevance": "...", "exact_citation": "..."}],
+    "legal_analysis": "Detailed analysis with inline citations",
+    "key_findings": ["Finding (with citation)"],
+    "risks_and_considerations": ["Risk 1"],
+    "recommendations": ["Action 1"],
+    "sources_cited": ["Source 1"],
     "confidence_level": "HIGH / MEDIUM / LOW",
-    "disclaimer": "This is AI-generated legal research and should be reviewed by a qualified attorney. / Dies ist eine KI-generierte Rechtsrecherche und sollte von einem qualifizierten Anwalt überprüft werden."
+    "disclaimer": "AI-generated legal research — review with a qualified attorney."
 }
 """
 
@@ -121,15 +103,56 @@ class LegalResearchAgent:
         except Exception:
             return []
 
+    # Keywords that signal a legal question — fast pre-check before hitting GPT
+    LEGAL_KEYWORDS = {
+        "contract", "clause", "agreement", "law", "legal", "liability", "gdpr", "dsgvo", "bgb",
+        "hgb", "compliance", "regulation", "breach", "termination", "jurisdiction", "damages",
+        "indemnity", "warranty", "intellectual", "property", "copyright", "patent", "privacy",
+        "data", "subprocessor", "processor", "controller", "dpa", "nda", "nda", "schrems",
+        "employment", "arbitration", "court", "parties", "obligation", "rights", "penalty",
+        "governing", "force majeure", "confidential", "eu", "european", "dsgvo", "art.", "§",
+        "non-compete", "noncompete", "transfer", "processing", "retention", "notice", "ip",
+    }
+
+    def _is_legal_question(self, question: str) -> bool:
+        """Fast keyword check — True if any legal term appears."""
+        q = question.lower()
+        return any(kw in q for kw in self.LEGAL_KEYWORDS)
+
     async def research(self, question: str, context: dict = None) -> dict:
         """
         Perform legal research on a question.
-        Uses RAG to search the knowledge base first.
+        - Non-legal questions → immediate out-of-scope refusal.
+        - Legal questions → RAG search first; answer from KB if hits, general law if not.
         """
-        # Step 1: Search the knowledge base
-        rag_results = self._search_knowledge_base(question)
+        # ── Pre-check: is this even a legal question? ──────────────────────────
+        if not self._is_legal_question(question):
+            return {
+                "out_of_scope": True,
+                "question_analyzed": question,
+                "detected_language": "en",
+                "jurisdiction": "N/A",
+                "legal_analysis": "I can only answer legal questions. This topic is outside my scope as a legal research tool.",
+                "key_findings": [],
+                "risks_and_considerations": [],
+                "recommendations": [],
+                "sources_cited": [],
+                "applicable_laws": [],
+                "confidence_level": "NONE",
+                "disclaimer": "",
+                "agent": "legal_research",
+                "status": "out_of_scope",
+                "rag_sources_used": 0,
+                "kb_hit": False,
+            }
 
-        # Step 2: Build the user message with retrieved context
+        # ── Step 1: Search the knowledge base ─────────────────────────────────
+        rag_results = self._search_knowledge_base(question)
+        RELEVANCE_THRESHOLD = 0.2  # relevance = 1 - distance; > 0.2 means distance < 0.8
+        good_hits = [r for r in rag_results if r["relevance"] >= RELEVANCE_THRESHOLD]
+        kb_hit = len(good_hits) > 0
+
+        # ── Step 2: Build the user message ────────────────────────────────────
         user_message = f"Legal Research Question:\n{question}\n"
 
         if context:
@@ -138,13 +161,15 @@ class LegalResearchAgent:
             if context.get("industry"):
                 user_message += f"\nIndustry: {context['industry']}"
 
-        if rag_results:
-            user_message += "\n\n## Retrieved Legal Sources:\n"
-            for i, result in enumerate(rag_results, 1):
+        if good_hits:
+            user_message += "\n\n## Retrieved Legal Sources (from firm knowledge base):\n"
+            for i, result in enumerate(good_hits, 1):
                 user_message += f"\n### Source {i} (relevance: {result['relevance']:.2f}, from: {result['source']})\n"
                 user_message += f"{result['text']}\n"
+        else:
+            user_message += "\n\n[No relevant documents found in the knowledge base for this query. Answer from your general legal knowledge only, and note this in your response.]"
 
-        # Step 3: Generate research analysis
+        # ── Step 3: Generate research analysis ────────────────────────────────
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -153,11 +178,13 @@ class LegalResearchAgent:
             ],
             response_format={"type": "json_object"},
             temperature=0.2,
-            max_tokens=4000,
+            max_tokens=2000,
         )
 
         result = json.loads(response.choices[0].message.content)
         result["agent"] = "legal_research"
         result["status"] = "researched"
-        result["rag_sources_used"] = len(rag_results)
+        result["rag_sources_used"] = len(good_hits)
+        result["kb_hit"] = kb_hit
+        result["out_of_scope"] = result.get("out_of_scope", False)
         return result

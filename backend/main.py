@@ -520,13 +520,27 @@ async def chat_with_ai(req: ChatRequest):
         else:
             # General legal research with RAG — multilingual
             research = await orchestrator.research_only(msg)
+            lang = research.get("detected_language", "en")
+            out_of_scope = research.get("out_of_scope", False)
+            kb_hit = research.get("kb_hit", False)
+
+            if out_of_scope:
+                return {
+                    "reply": "I'm a legal research tool — I can only help with questions about contracts, law, GDPR, compliance, and similar legal topics. That question is outside my scope.",
+                    "full_result": research,
+                    "sources": [],
+                    "detected_language": lang,
+                    "out_of_scope": True,
+                    "kb_hit": False,
+                }
+
             analysis = research.get("legal_analysis", "")
             sources = research.get("sources_cited", [])
             laws = research.get("applicable_laws", [])
-            lang = research.get("detected_language", "en")
 
-            # Build cited response
             reply_parts = [analysis[:800]] if analysis else ["I couldn't find specific information on that topic."]
+            if not kb_hit:
+                reply_parts.append("\n⚠️ Note: This answer is based on general legal knowledge — not found in the firm knowledge base.")
             if laws:
                 reply_parts.append("\n📖 Cited Laws:")
                 for l in laws[:5]:
@@ -540,6 +554,8 @@ async def chat_with_ai(req: ChatRequest):
                 "full_result": research,
                 "sources": sources,
                 "detected_language": lang,
+                "out_of_scope": False,
+                "kb_hit": kb_hit,
             }
     except Exception as e:
         return {"reply": f"Error: {str(e)}", "full_result": None, "sources": [], "detected_language": "en"}
