@@ -280,13 +280,24 @@ function PipelineProgress({running,pipelineResult,animStep}){
 
   const ragSteps=new Set([3,4,5,7]);
 
+  // Auto-expand all steps once pipeline finishes
+  React.useEffect(()=>{
+    if(!running&&d&&expandedStep===null)setExpandedStep("all");
+  },[running,d]);
+  const isExpanded=(num)=>expandedStep==="all"||expandedStep===num;
+
   return(
     <div className="space-y-1">
+      {!running&&d&&<div className="flex justify-end mb-1">
+        <button onClick={()=>setExpandedStep(expandedStep==="all"?null:"all")} className="text-[10px] text-[#888] hover:text-[#333] px-2 py-0.5 border border-[#e8e5e0] rounded">
+          {expandedStep==="all"?"Collapse all":"Expand all"}
+        </button>
+      </div>}
       {PIPELINE_STEPS.map(s=>{
         const done=completedSteps.has(s.num);
         const active=running&&animStep===s.num;
         const detail=stepDetail(s.num);
-        const expanded=expandedStep===s.num;
+        const expanded=isExpanded(s.num);
         const hasExpanded=done&&stepExpanded(s.num);
         return(
           <div key={s.num} className={`rounded-lg border transition-all ${done?"border-green-200 bg-green-50":active?"border-indigo-200 bg-indigo-50":"border-[#f0ede8] bg-[#fafaf9]"}`}>
@@ -391,6 +402,10 @@ function Dashboard({onBack}){
   const[ragSearching,setRagSearching]=useState(false);
   const[ldaStatus,setLdaStatus]=useState(null);
   const[ldaAsset,setLdaAsset]=useState("Beratermodul Miet- und WEG-Recht");
+  const[approveData,setApproveData]=useState(null);
+  const[approveDecided,setApproveDecided]=useState(null);
+  const[approveComment,setApproveComment]=useState("");
+  const[approveLoading,setApproveLoading]=useState(false);
   const[triageCases,setTriageCases]=useState([
     {id:"tc1",title:"BMW DPA — Data Transfer Clause",contract:"BMW_DPA_v2.pdf",type:"DPA",risk:"HIGH",deadline:"2026-04-27T09:00",assignee:"Dr. Andreas",status:"escalated",reason:"Cross-border transfer clause violates Schrems II — needs CEO sign-off before BMW deadline",hoursLeft:8},
     {id:"tc2",title:"Client NDA — Non-Compete Scope",contract:"Client_NDA_Draft.docx",type:"NDA",risk:"HIGH",deadline:"2026-04-27T14:00",assignee:"Ms. Silvia",status:"pending_review",reason:"Non-compete clause exceeds 2-year BGB limit — client meeting tomorrow at 2pm",hoursLeft:13},
@@ -457,6 +472,12 @@ function Dashboard({onBack}){
     loadCollections();loadSettings();loadTargets();
     fetch(`${API}/api/lda/status`).then(r=>r.json()).then(d=>setLdaStatus(d)).catch(()=>{});
     const hash=window.location.hash;
+    if(hash.startsWith("#approve=")){
+      const mid=hash.replace("#approve=","");
+      fetch(`${API}/api/pipeline/${mid}/status`).then(r=>r.json()).then(d=>{
+        if(d.matter_id)setApproveData({...d,...(d.simplified_memo||{})});
+      }).catch(()=>{});
+    }
     if(hash.startsWith("#matter=")){
       const mid=hash.replace("#matter=","");
       fetch(`${API}/api/pipeline/${mid}/status`).then(r=>r.json()).then(d=>{
@@ -817,6 +838,83 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
     {id:"matter",label:"Full Matter",ic:"M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"},
     {id:"rag",label:"Q&A",ic:"M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"},
     {id:"kb",label:"Knowledge Base",ic:"M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"}];
+
+  const doApproval=async(decision)=>{
+    if(!approveData?.matter_id||approveLoading)return;
+    setApproveLoading(true);
+    try{
+      await fetch(`${API}/api/approvals/${approveData.matter_id}/${decision.toLowerCase()}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({comment:approveComment})});
+      setApproveDecided(decision);
+    }catch(e){}setApproveLoading(false);
+  };
+
+  if(approveData&&!approveDecided){
+    const rec=approveData.recommendation||approveData.simplified?.recommendation||"?";
+    const risks=approveData.plain_risks||approveData.simplified?.plain_risks||[];
+    const summary=approveData.executive_summary||approveData.simplified?.executive_summary||"";
+    const decision=approveData.decision_needed||approveData.simplified?.decision_needed||"";
+    const recColors={APPROVE:"bg-green-50 border-green-300 text-green-800",REJECT:"bg-red-50 border-red-300 text-red-800",NEGOTIATE:"bg-amber-50 border-amber-300 text-amber-800"};
+    return(
+      <div className="min-h-screen dash-light flex items-center justify-center p-6">
+        <div className="max-w-2xl w-full space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="font-harvey text-2xl text-[#1a1a1a]">Harveyy</span>
+            <span className="text-[#bbb] text-sm">/ Executive Approval</span>
+          </div>
+          <div className="card p-6 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-harvey text-xl text-[#1a1a1a]">Contract Decision Required</h2>
+                <p className="text-xs text-[#888] mt-0.5 font-mono">{approveData.matter_id}</p>
+              </div>
+              <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${(recColors[rec]||"bg-[#f0ede8] text-[#555] border-[#e0ddd8]")}`}>{rec}</span>
+            </div>
+            <div className="bg-[#fafaf9] rounded-xl p-4 border border-[#e8e5e0]">
+              <p className="text-xs font-semibold text-[#999] uppercase mb-1.5">Summary</p>
+              <p className="text-sm text-[#333] leading-relaxed">{summary}</p>
+            </div>
+            {risks.length>0&&(
+              <div>
+                <p className="text-xs font-semibold text-[#999] uppercase mb-2">Key Risks</p>
+                <ul className="space-y-1.5">{risks.map((r,i)=>(<li key={i} className="flex gap-2 text-sm text-[#444]"><span className="text-amber-500 mt-0.5 flex-shrink-0">⚠</span>{r}</li>))}</ul>
+              </div>
+            )}
+            {decision&&<p className="text-sm font-medium text-[#333] bg-indigo-50 border border-indigo-100 rounded-lg p-3">{decision}</p>}
+            <div>
+              <p className="text-xs font-semibold text-[#999] uppercase mb-1.5">Comment (optional)</p>
+              <textarea value={approveComment} onChange={e=>setApproveComment(e.target.value)} rows={2}
+                className="w-full rounded-lg p-3 text-sm resize-none border border-[#e8e5e0]" placeholder="Add a note for the legal team..."/>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={()=>doApproval("approve")} disabled={approveLoading}
+                className="flex-1 py-3.5 rounded-xl text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition">
+                ✅ Approve
+              </button>
+              <button onClick={()=>doApproval("reject")} disabled={approveLoading}
+                className="flex-1 py-3.5 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-700 text-white transition">
+                ❌ Reject
+              </button>
+            </div>
+            <p className="text-[10px] text-center text-[#bbb]">Your decision will notify the legal team via Slack immediately.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if(approveDecided){
+    return(
+      <div className="min-h-screen dash-light flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center space-y-4">
+          <p className="text-5xl">{approveDecided==="approve"?"✅":"❌"}</p>
+          <h2 className="font-harvey text-2xl text-[#1a1a1a]">Matter {approveDecided==="approve"?"Approved":"Rejected"}</h2>
+          <p className="text-sm text-[#888]">The legal team has been notified via Slack.{approveComment&&` Your comment: "${approveComment}"`}</p>
+          <button onClick={()=>{setApproveData(null);setApproveDecided(null);window.location.hash="";}}
+            className="btn-primary px-6 py-2.5 rounded-lg text-sm">Back to Dashboard</button>
+        </div>
+      </div>
+    );
+  }
 
   return(
     <div className="min-h-screen dash-light">

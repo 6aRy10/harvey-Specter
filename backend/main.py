@@ -837,6 +837,39 @@ async def pipeline_status(matter_id: str):
     return data
 
 
+class ApprovalDecisionRequest(BaseModel):
+    comment: str = ""
+
+
+@app.post("/api/approvals/{matter_id}/approve")
+async def approve_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
+    """Executive approves the matter."""
+    if matter_id not in _pipeline_store:
+        raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
+    _pipeline_store[matter_id]["approval_status"] = "APPROVED"
+    _pipeline_store[matter_id]["approval_comment"] = req.comment
+    _pipeline_store[matter_id]["approved_at"] = datetime.now().isoformat()
+    # Notify legal team via Slack
+    legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_URL", "")
+    if legal_webhook:
+        _send_slack_raw(legal_webhook, {"text": f"✅ *Matter {matter_id} APPROVED* by Dr. Peter\nComment: {req.comment or '(none)'}"})
+    return {"matter_id": matter_id, "decision": "APPROVED", "comment": req.comment}
+
+
+@app.post("/api/approvals/{matter_id}/reject")
+async def reject_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
+    """Executive rejects the matter."""
+    if matter_id not in _pipeline_store:
+        raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
+    _pipeline_store[matter_id]["approval_status"] = "REJECTED"
+    _pipeline_store[matter_id]["approval_comment"] = req.comment
+    _pipeline_store[matter_id]["rejected_at"] = datetime.now().isoformat()
+    legal_webhook = _get_webhook_by_role("legal_team") or os.getenv("SLACK_WEBHOOK_URL", "")
+    if legal_webhook:
+        _send_slack_raw(legal_webhook, {"text": f"❌ *Matter {matter_id} REJECTED* by Dr. Peter\nReason: {req.comment or '(none)'}"})
+    return {"matter_id": matter_id, "decision": "REJECTED", "comment": req.comment}
+
+
 class SimplifyRequest(BaseModel):
     legal_notes: str = ""  # Optional corrections from legal team
 
@@ -894,18 +927,22 @@ async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRe
 
     rec_emoji = {"APPROVE": "✅", "REJECT": "❌", "NEGOTIATE": "⚠️"}.get(recommendation, "❓")
 
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5500")
+    approve_url = f"{frontend_url}#approve={matter_id}"
     exec_msg = {
         "blocks": [
             {"type": "header", "text": {"type": "plain_text", "text": f"{rec_emoji} Contract Decision Required — {matter_id}", "emoji": True}},
-            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Hi Mr. Peter,*\n\n{exec_summary}"}},
+            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Hi Dr. Peter,*\n\n{exec_summary}"}},
             {"type": "divider"},
             {"type": "section", "text": {"type": "mrkdwn",
                 "text": "*Key risks (in plain language):*\n" + "\n".join(f"• {r}" for r in plain_risks[:4])}},
             {"type": "divider"},
             {"type": "section", "text": {"type": "mrkdwn",
-                "text": f"*What the legal team recommends:* {rec_emoji} *{recommendation}*\n\n*What you need to decide:* {decision}"}},
-            {"type": "section", "text": {"type": "mrkdwn",
-                "text": f"✏️ To approve or reject, reply here or call:\n`POST /api/approvals/{matter_id}/approve` or `/reject`"}},
+                "text": f"*Legal team recommends:* {rec_emoji} *{recommendation}*\n\n*Your decision:* {decision}"}},
+            {"type": "actions", "elements": [
+                {"type": "button", "text": {"type": "plain_text", "text": "✅ Open & Approve / Reject", "emoji": True},
+                 "url": approve_url, "style": "primary"},
+            ]},
             {"type": "context", "elements": [{"type": "mrkdwn",
                 "text": f"Reviewed by Legal Team | Matter `{matter_id}` | Harveyy AI | {datetime.now().strftime('%Y-%m-%d %H:%M')} UTC"}]}
         ]
