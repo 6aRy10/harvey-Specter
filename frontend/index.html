@@ -220,8 +220,8 @@ function ContractViewer({text,clauses=[]}){
     <div className="bg-white rounded-xl border border-[#e8e5e0] max-h-[550px] overflow-auto shadow-sm">
       <div className="px-5 py-3 border-b border-[#f0ede8] flex items-center gap-3 sticky top-0 bg-white z-10">
         <span className="text-xs font-semibold text-[#333] uppercase tracking-wider">Document</span>
-        {clauses.length>0&&<span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">{clauses.length} clause{clauses.length!==1?"s":""} flagged</span>}
-        <span className="text-[10px] text-[#bbb] ml-auto">Hover highlights for details</span>
+        {clauses.length>0&&<span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">{clauses.length} clause{clauses.length!==1?"s":""} flagged</span>}
+        <span className="text-xs text-[#bbb] ml-auto">Hover highlights for details</span>
       </div>
       <div className="px-8 py-6 font-serif text-[13px] text-[#1a1a1a] leading-7 whitespace-pre-wrap" style={{fontFamily:"'Georgia',serif"}} dangerouslySetInnerHTML={{__html:html}}/>
     </div>
@@ -270,11 +270,11 @@ function PipelineProgress({running,pipelineResult,animStep}){
     if(!d)return null;
     if(num===3)(d.clauses?.clauses||[]).slice(0,5);
     const cls=d.clauses?.clauses||[];
-    if(num===3)return(<div className="space-y-1 mt-2">{cls.slice(0,5).map((c,i)=>(<div key={i} className="flex gap-2 items-start text-[10px]"><span className={`px-1 rounded font-bold flex-shrink-0 ${c.risk==="HIGH"?"bg-red-100 text-red-700":c.risk==="MEDIUM"?"bg-amber-100 text-amber-700":"bg-green-100 text-green-700"}`}>{c.risk}</span><span className="text-[#555]"><b>{c.name}</b>: {c.issue}</span></div>))}</div>);
-    if(num===4)return(<div className="space-y-1 mt-2">{(d.gdpr?.issues||[]).map((i,idx)=>(<p key={idx} className="text-[10px] text-[#555]">⚠️ <b>{i.article}</b>: {i.issue}</p>))}</div>);
-    if(num===5)return(<div className="mt-2 space-y-1">{(d.risk?.top_risks||[]).map((r,i)=>(<p key={i} className="text-[10px] text-[#555]">• {r}</p>))}</div>);
-    if(num===6)return(<div className="space-y-1 mt-2">{(d.redlines?.redlines||[]).slice(0,3).map((r,i)=>(<div key={i} className="text-[10px] border-l-2 border-green-300 pl-2"><p className="font-medium text-[#333]">{r.clause}</p><p className="text-green-700">{r.proposed_redline?.substring(0,120)}</p></div>))}</div>);
-    if(num===7)return d.memo?.memo?(<p className="text-[10px] text-[#555] mt-2 leading-relaxed">{d.memo.memo.substring(0,400)}…</p>):null;
+    if(num===3)return(<div className="space-y-1 mt-2">{cls.slice(0,5).map((c,i)=>(<div key={i} className="flex gap-2 items-start text-xs"><span className={`px-1 rounded font-bold flex-shrink-0 ${c.risk==="HIGH"?"bg-red-100 text-red-700":c.risk==="MEDIUM"?"bg-amber-100 text-amber-700":"bg-green-100 text-green-700"}`}>{c.risk}</span><span className="text-[#555]"><b>{c.name}</b>: {c.issue}</span></div>))}</div>);
+    if(num===4)return(<div className="space-y-1 mt-2">{(d.gdpr?.issues||[]).map((i,idx)=>(<p key={idx} className="text-xs text-[#555]">⚠️ <b>{i.article}</b>: {i.issue}</p>))}</div>);
+    if(num===5)return(<div className="mt-2 space-y-1">{(d.risk?.top_risks||[]).map((r,i)=>(<p key={i} className="text-xs text-[#555]">• {r}</p>))}</div>);
+    if(num===6)return(<div className="space-y-1 mt-2">{(d.redlines?.redlines||[]).slice(0,3).map((r,i)=>(<div key={i} className="text-xs border-l-2 border-green-300 pl-2"><p className="font-medium text-[#333]">{r.clause}</p><p className="text-green-700">{r.proposed_redline?.substring(0,120)}</p></div>))}</div>);
+    if(num===7)return d.memo?.memo?(<p className="text-xs text-[#555] mt-2 leading-relaxed">{d.memo.memo.substring(0,400)}…</p>):null;
     return null;
   };
 
@@ -289,7 +289,7 @@ function PipelineProgress({running,pipelineResult,animStep}){
   return(
     <div className="space-y-1">
       {!running&&d&&<div className="flex justify-end mb-1">
-        <button onClick={()=>setExpandedStep(expandedStep==="all"?null:"all")} className="text-[10px] text-[#888] hover:text-[#333] px-2 py-0.5 border border-[#e8e5e0] rounded">
+        <button onClick={()=>setExpandedStep(expandedStep==="all"?null:"all")} className="text-xs text-[#888] hover:text-[#333] px-2 py-0.5 border border-[#e8e5e0] rounded">
           {expandedStep==="all"?"Collapse all":"Expand all"}
         </button>
       </div>}
@@ -303,20 +303,20 @@ function PipelineProgress({running,pipelineResult,animStep}){
           <div key={s.num} className={`rounded-lg border transition-all ${done?"border-green-200 bg-green-50":active?"border-indigo-200 bg-indigo-50":"border-[#f0ede8] bg-[#fafaf9]"}`}>
             <div className={`flex items-center gap-2.5 px-3 py-2 ${hasExpanded?"cursor-pointer":""}`}
               onClick={()=>hasExpanded&&setExpandedStep(expanded?null:s.num)}>
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${done?"bg-green-500 text-white":active?"bg-indigo-500 text-white animate-pulse":"bg-[#e8e5e0] text-[#999]"}`}>
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${done?"bg-green-500 text-white":active?"bg-indigo-500 text-white animate-pulse":"bg-[#e8e5e0] text-[#999]"}`}>
                 {done?"✓":active?"↻":s.num}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <p className={`text-xs font-medium ${done?"text-green-800":active?"text-indigo-700":"text-[#555]"}`}>{s.label}</p>
-                  {done&&ragSteps.has(s.num)&&<span className="text-[9px] px-1 py-0.5 bg-violet-100 text-violet-600 rounded font-semibold">RAG</span>}
+                  {done&&ragSteps.has(s.num)&&<span className="text-[11px] px-1 py-0.5 bg-violet-100 text-violet-600 rounded font-semibold">RAG</span>}
                 </div>
-                {detail&&<p className="text-[10px] text-[#777] mt-0.5 leading-snug">{detail}</p>}
+                {detail&&<p className="text-xs text-[#777] mt-0.5 leading-snug">{detail}</p>}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {done&&<span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">done</span>}
-                {active&&<span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 animate-pulse">running…</span>}
-                {hasExpanded&&<span className="text-[#bbb] text-[10px]">{expanded?"▲":"▼"}</span>}
+                {done&&<span className="text-[11px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">done</span>}
+                {active&&<span className="text-[11px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 animate-pulse">running…</span>}
+                {hasExpanded&&<span className="text-[#bbb] text-xs">{expanded?"▲":"▼"}</span>}
               </div>
             </div>
             {expanded&&hasExpanded&&(
@@ -330,7 +330,7 @@ function PipelineProgress({running,pipelineResult,animStep}){
 }
 
 function AgentDot({active,name}){
-  return(<div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${active?"bg-green-400 agent-active":"bg-gray-700"}`}/><span className="text-[11px] text-gray-500">{name}</span></div>);
+  return(<div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${active?"bg-green-400 agent-active":"bg-gray-700"}`}/><span className="text-sm text-gray-500">{name}</span></div>);
 }
 
 function AuditTrail({trail=[]}){
@@ -895,7 +895,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 ❌ Reject
               </button>
             </div>
-            <p className="text-[10px] text-center text-[#bbb]">Your decision will notify the legal team via Slack immediately.</p>
+            <p className="text-xs text-center text-[#bbb]">Your decision will notify the legal team via Slack immediately.</p>
           </div>
         </div>
       </div>
@@ -986,13 +986,13 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center"><svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-                    <div><p className="text-sm font-medium text-[#333]">Contract loaded</p><p className="text-[11px] text-[#999]">{contractText.length.toLocaleString()} characters</p></div>
+                    <div><p className="text-sm font-medium text-[#333]">Contract loaded</p><p className="text-sm text-[#999]">{contractText.length.toLocaleString()} characters</p></div>
                   </div>
                   <button onClick={()=>{setContractText("");setIntakeQs(null);setIntakeStep(0);setChatMsgs([]);setResult(null)}} className="text-xs text-red-500 hover:text-red-700 transition">Remove</button>
                 </div>
                 <details className="text-xs">
                   <summary className="text-[#999] cursor-pointer hover:text-[#666]">Preview contract text</summary>
-                  <pre className="mt-2 max-h-40 overflow-auto text-[11px] text-[#666] bg-[#fafaf9] rounded-lg p-3 font-mono whitespace-pre-wrap">{contractText.slice(0,1500)}{contractText.length>1500?"...":""}</pre>
+                  <pre className="mt-2 max-h-40 overflow-auto text-sm text-[#666] bg-[#fafaf9] rounded-lg p-3 font-mono whitespace-pre-wrap">{contractText.slice(0,1500)}{contractText.length>1500?"...":""}</pre>
                 </details>
               </div>)}
 
@@ -1000,7 +1000,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               {intakeStep===1&&intakeQs&&(<div className="card p-5 space-y-3 slide-in border-l-4 border-l-indigo-400">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                  <div><h3 className="text-sm font-semibold text-[#333]">Before we review...</h3><p className="text-[10px] text-[#999]">Help the AI focus. Skip any you don't need.</p></div>
+                  <div><h3 className="text-sm font-semibold text-[#333]">Before we review...</h3><p className="text-xs text-[#999]">Help the AI focus. Skip any you don't need.</p></div>
                 </div>
                 <div className="space-y-2.5">
                   {intakeQs.map((q,i)=>(<div key={q.id} className="slide-in" style={{animationDelay:`${i*50}ms`}}>
@@ -1008,12 +1008,12 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     {q.type==="multiselect"?(
                       <div className="flex flex-wrap gap-1">
                         {q.options.map(o=>{const sel=(Array.isArray(q.answer)?q.answer:[]).includes(o);return(<button key={o} onClick={()=>{const cur=Array.isArray(q.answer)?q.answer:[];updateIntakeAnswer(q.id,sel?cur.filter(x=>x!==o):[...cur,o]);}}
-                          className={`px-2.5 py-1 rounded text-[11px] transition border ${sel?'bg-indigo-600 text-white border-indigo-600':'bg-white text-[#555] border-[#e0ddd8] hover:border-indigo-300'}`}>{o}</button>);})}
+                          className={`px-2.5 py-1 rounded text-sm transition border ${sel?'bg-indigo-600 text-white border-indigo-600':'bg-white text-[#555] border-[#e0ddd8] hover:border-indigo-300'}`}>{o}</button>);})}
                       </div>
                     ):q.type==="select"?(
                       <div className="flex flex-wrap gap-1">
                         {q.options.map(o=>(<button key={o} onClick={()=>updateIntakeAnswer(q.id,o)}
-                          className={`px-2.5 py-1 rounded text-[11px] transition border ${q.answer===o?'bg-indigo-600 text-white border-indigo-600':'bg-white text-[#555] border-[#e0ddd8] hover:border-indigo-300'}`}>{o}</button>))}
+                          className={`px-2.5 py-1 rounded text-sm transition border ${q.answer===o?'bg-indigo-600 text-white border-indigo-600':'bg-white text-[#555] border-[#e0ddd8] hover:border-indigo-300'}`}>{o}</button>))}
                       </div>
                     ):(
                       <input value={q.answer} onChange={e=>updateIntakeAnswer(q.id,e.target.value)}
@@ -1026,11 +1026,11 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     className="btn-primary flex-1 py-2.5 rounded-lg text-xs transition">
                     {loading?"Analyzing...":"Analyze Contract"}</button>
                   <button onClick={()=>{setIntakeStep(2);runPipeline();}} disabled={loading||pipelineRunning}
-                    className="py-2.5 px-3 rounded-lg text-[11px] transition font-medium border-2 border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5">
+                    className="py-2.5 px-3 rounded-lg text-sm transition font-medium border-2 border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5">
                     {pipelineRunning?<><span className="inline-block w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"/>Running...</>:"⚡ Full Pipeline"}
                   </button>
                   <button onClick={()=>{setIntakeStep(2);callAPI("/api/review",{contract_text:contractText})}} disabled={loading||pipelineRunning}
-                    className="btn-outline px-3 py-2.5 rounded-lg text-[11px] transition">Skip</button>
+                    className="btn-outline px-3 py-2.5 rounded-lg text-sm transition">Skip</button>
                 </div>
               </div>)}
 
@@ -1044,7 +1044,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               <div className="card p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold text-[#333] uppercase tracking-wider">Contract Queue</h3>
-                  <span className="text-[10px] px-2 py-0.5 bg-[#f5f3f0] rounded text-[#999]">{triageList.length} items</span>
+                  <span className="text-xs px-2 py-0.5 bg-[#f5f3f0] rounded text-[#999]">{triageList.length} items</span>
                 </div>
                 <div className="space-y-1.5">
                   {triageList.map(t=>(<div key={t.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[#fafaf9] transition cursor-pointer group"
@@ -1052,11 +1052,11 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     <div className={`w-2 h-2 rounded-full shrink-0 ${t.status==='needs_review'?'bg-red-400':t.status==='in_review'?'bg-amber-400':'bg-green-400'}`}/>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-[#333] truncate">{t.name}</p>
-                      <div className="flex items-center gap-2 text-[10px] text-[#999]">
+                      <div className="flex items-center gap-2 text-xs text-[#999]">
                         <span>{t.type}</span><span>&middot;</span><span>{t.uploaded}</span><span>&middot;</span><span>{t.assignee}</span>
                       </div>
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${t.status==='needs_review'?'bg-red-50 text-red-600':t.status==='in_review'?'bg-amber-50 text-amber-600':'bg-green-50 text-green-600'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${t.status==='needs_review'?'bg-red-50 text-red-600':t.status==='in_review'?'bg-amber-50 text-amber-600':'bg-green-50 text-green-600'}`}>
                       {t.status.replace(/_/g,' ')}</span>
                   </div>))}
                 </div>
@@ -1068,7 +1068,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                   <h3 className="text-xs font-semibold text-[#333] uppercase tracking-wider">Team Members</h3>
                   <div className="flex items-center gap-1">
                     <div className="flex -space-x-1.5">
-                      {teamMembers.map(m=>(<div key={m.id} className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${m.name==='AI Agent'?'bg-indigo-600':'bg-[#1a1a1a]'} ring-2 ring-white`}>{m.avatar}</div>))}
+                      {teamMembers.map(m=>(<div key={m.id} className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${m.name==='AI Agent'?'bg-indigo-600':'bg-[#1a1a1a]'} ring-2 ring-white`}>{m.avatar}</div>))}
                     </div>
                     <svg className={`w-3.5 h-3.5 text-[#999] transition ${showTeam?'rotate-180':''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
                   </div>
@@ -1081,7 +1081,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-[#333]">{m.name}</p>
-                      <p className="text-[10px] text-[#999]">{m.role}</p>
+                      <p className="text-xs text-[#999]">{m.role}</p>
                     </div>
                     <div className="flex flex-wrap gap-0.5 max-w-[100px]">
                       {m.permissions.map(p=>(<span key={p} className={`text-[8px] px-1.5 py-0.5 rounded ${p==='admin'?'bg-red-50 text-red-600':p==='approve'?'bg-green-50 text-green-600':'bg-[#f5f3f0] text-[#888]'}`}>{p}</span>))}
@@ -1093,20 +1093,20 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               {/* ── ChatGPT-style Chat Box ── */}
               <div className="card overflow-hidden">
                 <div className="p-3 border-b border-[#e8e5e0] flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center"><span className="text-[9px] font-bold text-white">H</span></div>
+                  <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center"><span className="text-[11px] font-bold text-white">H</span></div>
                   <span className="text-xs font-semibold text-[#333]">Harveyy AI</span>
-                  <span className="text-[10px] text-green-500 ml-auto flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400"/>Online</span>
+                  <span className="text-xs text-green-500 ml-auto flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400"/>Online</span>
                 </div>
                 <div className="h-48 overflow-y-auto p-3 space-y-2 bg-[#fafaf9]" style={{scrollBehavior:'smooth'}}>
                   {chatMsgs.length===0&&(<div className="text-center py-6">
                     <p className="text-xs text-[#bbb]">Upload a contract and ask me anything.</p>
-                    <p className="text-[10px] text-[#ddd] mt-1">"Check for GDPR issues" &middot; "Ist diese Klausel nach BGB durchsetzbar?" &middot; "इस अनुबंध में क्या जोखिम हैं?"</p>
+                    <p className="text-xs text-[#ddd] mt-1">"Check for GDPR issues" &middot; "Ist diese Klausel nach BGB durchsetzbar?" &middot; "इस अनुबंध में क्या जोखिम हैं?"</p>
                   </div>)}
                   {chatMsgs.map((m,i)=>(<div key={i} className={`flex ${m.role==='user'?'justify-end':'justify-start'} slide-in`}>
                     <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${m.role==='user'?'bg-[#1a1a1a] text-white rounded-br-sm':'bg-white text-[#333] border border-[#e8e5e0] rounded-bl-sm'} ${m.loading?'animate-pulse':''}`}>
                       <div style={{whiteSpace:'pre-wrap'}}>{m.text}</div>
-                      {m.sources?.length>0&&(<div className="mt-1.5 pt-1.5 border-t border-[#e8e5e0]"><span className="text-[9px] text-[#999]">Sources: {m.sources.join(", ")}</span></div>)}
-                      <div className={`flex items-center gap-1.5 text-[9px] mt-1 ${m.role==='user'?'text-white/40':'text-[#ccc]'}`}>
+                      {m.sources?.length>0&&(<div className="mt-1.5 pt-1.5 border-t border-[#e8e5e0]"><span className="text-[11px] text-[#999]">Sources: {m.sources.join(", ")}</span></div>)}
+                      <div className={`flex items-center gap-1.5 text-[11px] mt-1 ${m.role==='user'?'text-white/40':'text-[#ccc]'}`}>
                         <span>{m.ts}</span>
                         {m.lang&&<span className="px-1 py-0.5 bg-[#f5f3f0] rounded text-[8px] text-[#888]">{m.lang}</span>}
                       </div>
@@ -1143,9 +1143,9 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
 
               {/* Triage Stats */}
               <div className="grid grid-cols-3 gap-2">
-                <div className="card p-3 text-center"><p className="text-lg font-semibold text-red-600">{triageCases.filter(c=>c.status==='critical'||c.status==='escalated').length}</p><p className="text-[10px] text-[#999] uppercase">Critical</p></div>
-                <div className="card p-3 text-center"><p className="text-lg font-semibold text-amber-600">{triageCases.filter(c=>c.status==='pending_review').length}</p><p className="text-[10px] text-[#999] uppercase">Pending Review</p></div>
-                <div className="card p-3 text-center"><p className="text-lg font-semibold text-green-600">{triageCases.filter(c=>c.status==='in_progress').length}</p><p className="text-[10px] text-[#999] uppercase">In Progress</p></div>
+                <div className="card p-3 text-center"><p className="text-lg font-semibold text-red-600">{triageCases.filter(c=>c.status==='critical'||c.status==='escalated').length}</p><p className="text-xs text-[#999] uppercase">Critical</p></div>
+                <div className="card p-3 text-center"><p className="text-lg font-semibold text-amber-600">{triageCases.filter(c=>c.status==='pending_review').length}</p><p className="text-xs text-[#999] uppercase">Pending Review</p></div>
+                <div className="card p-3 text-center"><p className="text-lg font-semibold text-green-600">{triageCases.filter(c=>c.status==='in_progress').length}</p><p className="text-xs text-[#999] uppercase">In Progress</p></div>
               </div>
 
               {/* Case List — sorted by urgency */}
@@ -1154,28 +1154,28 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${c.risk==='HIGH'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}`}>{c.risk}</span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${c.status==='critical'?'bg-red-600 text-white':c.status==='escalated'?'bg-red-100 text-red-600':c.status==='pending_review'?'bg-amber-100 text-amber-600':'bg-blue-100 text-blue-600'}`}>{c.status.replace(/_/g,' ')}</span>
-                        <span className="text-[9px] px-1.5 py-0.5 bg-[#f5f3f0] rounded text-[#888]">{c.type}</span>
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${c.risk==='HIGH'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}`}>{c.risk}</span>
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${c.status==='critical'?'bg-red-600 text-white':c.status==='escalated'?'bg-red-100 text-red-600':c.status==='pending_review'?'bg-amber-100 text-amber-600':'bg-blue-100 text-blue-600'}`}>{c.status.replace(/_/g,' ')}</span>
+                        <span className="text-[11px] px-1.5 py-0.5 bg-[#f5f3f0] rounded text-[#888]">{c.type}</span>
                       </div>
                       <h4 className="text-sm font-medium text-[#333] leading-tight">{c.title}</h4>
-                      <p className="text-[11px] text-[#888] mt-1 leading-relaxed">{c.reason}</p>
+                      <p className="text-sm text-[#888] mt-1 leading-relaxed">{c.reason}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#f0ede8]">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1.5">
                         <div className="w-5 h-5 rounded-full bg-[#1a1a1a] flex items-center justify-center text-[8px] font-bold text-white">{c.assignee[0]}</div>
-                        <span className="text-[10px] text-[#888]">{c.assignee}</span>
+                        <span className="text-xs text-[#888]">{c.assignee}</span>
                       </div>
-                      <span className="text-[10px] text-[#bbb]">{c.contract}</span>
+                      <span className="text-xs text-[#bbb]">{c.contract}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-semibold ${c.hoursLeft<=12?'text-red-600':c.hoursLeft<=24?'text-amber-600':'text-[#888]'}`}>
+                      <span className={`text-xs font-semibold ${c.hoursLeft<=12?'text-red-600':c.hoursLeft<=24?'text-amber-600':'text-[#888]'}`}>
                         {c.hoursLeft<=12?`${c.hoursLeft}h left`:c.hoursLeft<=24?`${c.hoursLeft}h left`:`${Math.floor(c.hoursLeft/24)}d ${c.hoursLeft%24}h`}
                       </span>
                       <button onClick={()=>{setTriageCases(p=>p.map(x=>x.id===c.id?{...x,status:'in_progress'}:x))}}
-                        className="text-[10px] px-2 py-1 bg-[#1a1a1a] text-white rounded hover:bg-[#333] transition">Take Action</button>
+                        className="text-xs px-2 py-1 bg-[#1a1a1a] text-white rounded hover:bg-[#333] transition">Take Action</button>
                     </div>
                   </div>
                 </div>))}
@@ -1189,9 +1189,9 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="text-[11px] px-2.5 py-1 bg-green-100 text-green-800 rounded-full font-bold">✅ 10/10 Executive Ready</span>
-                      <span className="text-[11px] px-2.5 py-1 bg-green-50 text-green-700 rounded-full font-semibold">0 Risk Issues</span>
-                      <span className="text-[10px] text-[#999] font-mono">{pipelineDraft.matter_id}</span>
+                      <span className="text-sm px-2.5 py-1 bg-green-100 text-green-800 rounded-full font-bold">✅ 10/10 Executive Ready</span>
+                      <span className="text-sm px-2.5 py-1 bg-green-50 text-green-700 rounded-full font-semibold">0 Risk Issues</span>
+                      <span className="text-xs text-[#999] font-mono">{pipelineDraft.matter_id}</span>
                     </div>
                     <h2 className="font-harvey text-xl text-[#1a1a1a]">Executive Draft — Ready to Send to Dr. Peter</h2>
                     <p className="text-xs text-[#888] mt-0.5">Plain-English version. Legal team review complete. One click to send.</p>
@@ -1203,7 +1203,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                   <p className="text-sm text-[#333] leading-relaxed">{pipelineDraft.simplified?.executive_summary}</p>
                   {(pipelineDraft.simplified?.plain_risks||[]).length>0&&(
                     <div>
-                      <p className="text-[10px] font-semibold text-[#999] uppercase mb-1.5">Key Risks (Plain Language)</p>
+                      <p className="text-xs font-semibold text-[#999] uppercase mb-1.5">Key Risks (Plain Language)</p>
                       <ul className="space-y-1">{pipelineDraft.simplified.plain_risks.map((r,i)=>(
                         <li key={i} className="text-xs text-[#555] flex gap-1.5"><span className="text-amber-500 mt-0.5">⚠</span>{r}</li>
                       ))}</ul>
@@ -1243,14 +1243,14 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <div><h2 className="card-header text-xl">Draft New Contract</h2><p className="text-xs text-[#999] mt-1">Describe what you need. AI picks the right template and generates a complete contract.</p></div>
                 <div className="flex flex-wrap gap-1.5">
                   {["Mutual NDA between German startup and US investor","SaaS agreement with GDPR compliance","German employment contract (Arbeitsvertrag)","Consulting agreement for AI project","GDPR Data Processing Agreement (Art. 28)"].map(s=>(
-                    <button key={s} onClick={()=>setDraftReq(s)} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
+                    <button key={s} onClick={()=>setDraftReq(s)} className="btn-outline px-2.5 py-1 rounded text-sm transition text-left">{s}</button>))}
                 </div>
                 <textarea value={draftReq} onChange={e=>setDraftReq(e.target.value)} rows={8}
                   className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Describe the contract you need in detail..."/>
                 <button onClick={()=>callAPI("/api/draft-with-approval",{requirements:draftReq})} disabled={loading||!draftReq.trim()}
                   className="btn-primary w-full py-3 rounded-lg text-sm transition">
                   {loading?"Generating...":"Draft & Request Partner Approval"}</button>
-                <p className="text-[10px] text-[#bbb] text-center">Draft will be sent to Slack for partner review before delivery</p>
+                <p className="text-xs text-[#bbb] text-center">Draft will be sent to Slack for partner review before delivery</p>
               </div>
             </div>)}
 
@@ -1261,13 +1261,13 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {["GDPR requirements for data processing agreements","Non-compete enforceability under German BGB §74","Schrems II transfer mechanisms and SCCs","German employment termination notice periods §622 BGB","Data breach notification obligations Art.33 GDPR","DPA Art.28 processor obligations"].map(s=>(
-                  <button key={s} onClick={()=>{setResearchQ(s);setRagAnswer(null);}} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
+                  <button key={s} onClick={()=>{setResearchQ(s);setRagAnswer(null);}} className="btn-outline px-2.5 py-1 rounded text-sm transition text-left">{s}</button>))}
               </div>
               {ldaStatus?.configured&&(<div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
                 <div className="w-2 h-2 rounded-full bg-green-500"/>
-                <span className="text-[11px] font-medium text-indigo-700">Otto Schmidt / LDA connected</span>
-                <span className="text-[10px] text-[#888] ml-auto">QnA will use professional legal database</span>
-                <select value={ldaAsset} onChange={e=>setLdaAsset(e.target.value)} className="text-[10px] border border-indigo-200 rounded px-1.5 py-0.5 bg-white text-[#333] ml-1">
+                <span className="text-sm font-medium text-indigo-700">Otto Schmidt / LDA connected</span>
+                <span className="text-xs text-[#888] ml-auto">QnA will use professional legal database</span>
+                <select value={ldaAsset} onChange={e=>setLdaAsset(e.target.value)} className="text-xs border border-indigo-200 rounded px-1.5 py-0.5 bg-white text-[#333] ml-1">
                   <option>Beratermodul Miet- und WEG-Recht</option>
                   <option>Aktionsmodul Familienrecht</option>
                   <option>Aktionsmodul Arbeitsrecht</option>
@@ -1300,37 +1300,37 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 {ragAnswer.lda?.result&&(<div className="bg-[#1a1a1a] rounded-xl p-4 space-y-2">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-semibold text-white">Otto Schmidt / LDA</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-white/10 text-white/70 rounded-full">Professional Legal Database</span>
+                    <span className="text-xs px-2 py-0.5 bg-white/10 text-white/70 rounded-full">Professional Legal Database</span>
                   </div>
                   <p className="text-sm text-white/90 leading-relaxed">{ragAnswer.lda.result?.answer||ragAnswer.lda.result?.text||JSON.stringify(ragAnswer.lda.result).substring(0,400)}</p>
                   {(ragAnswer.lda.result?.sources||ragAnswer.lda.result?.references||[]).length>0&&(
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="text-[10px] text-white/50 uppercase font-semibold">Sources</p>
+                      <p className="text-xs text-white/50 uppercase font-semibold">Sources</p>
                       {(ragAnswer.lda.result.sources||ragAnswer.lda.result.references||[]).slice(0,3).map((s,i)=>(
-                        <p key={i} className="text-[10px] text-white/60">{s?.title||s?.reference||JSON.stringify(s).substring(0,80)}</p>
+                        <p key={i} className="text-xs text-white/60">{s?.title||s?.reference||JSON.stringify(s).substring(0,80)}</p>
                       ))}
                     </div>
                   )}
                 </div>)}
                 {ragAnswer.synthesis?.answer&&(<div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                  <p className="text-[10px] font-semibold text-indigo-600 uppercase mb-1.5">⚖️ Synthesized Answer</p>
+                  <p className="text-xs font-semibold text-indigo-600 uppercase mb-1.5">⚖️ Synthesized Answer</p>
                   <p className="text-sm text-[#333] leading-relaxed">{ragAnswer.synthesis.answer}</p>
                 </div>)}
                 {ragAnswer.legal.length>0&&(<div className="space-y-2">
-                  <p className="text-[10px] font-semibold text-[#999] uppercase">📚 Legal Knowledge Sources ({ragAnswer.legal.length})</p>
+                  <p className="text-xs font-semibold text-[#999] uppercase">📚 Legal Knowledge Sources ({ragAnswer.legal.length})</p>
                   {ragAnswer.legal.filter(r=>(r.distance||9)<1.8).map((r,i)=>(<div key={i} className="bg-[#fafaf9] rounded-lg p-3 border border-[#e8e5e0]">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-semibold text-indigo-600">{r.metadata?.source||r.source||"Legal DB"}</span>
-                      <span className="text-[9px] text-[#bbb]">relevance: {Math.round((1-(r.distance||0)/2)*100)}%</span>
+                      <span className="text-xs font-semibold text-indigo-600">{r.metadata?.source||r.source||"Legal DB"}</span>
+                      <span className="text-[11px] text-[#bbb]">relevance: {Math.round((1-(r.distance||0)/2)*100)}%</span>
                     </div>
-                    <p className="text-[11px] text-[#555] leading-relaxed">{(r.text||r.documents||r.document||"").substring(0,350)}</p>
+                    <p className="text-sm text-[#555] leading-relaxed">{(r.text||r.documents||r.document||"").substring(0,350)}</p>
                   </div>))}
                 </div>)}
                 {ragAnswer.policies.filter(r=>(r.distance||9)<1.8).length>0&&(<div className="space-y-2">
-                  <p className="text-[10px] font-semibold text-[#999] uppercase">📖 Firm Policy Sources</p>
+                  <p className="text-xs font-semibold text-[#999] uppercase">📖 Firm Policy Sources</p>
                   {ragAnswer.policies.filter(r=>(r.distance||9)<1.8).map((r,i)=>(<div key={i} className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-                    <span className="text-[10px] font-semibold text-amber-700">{r.metadata?.source||"Internal Playbook"}</span>
-                    <p className="text-[11px] text-[#555] mt-1 italic">"{(r.text||r.document||"").substring(0,300)}"</p>
+                    <span className="text-xs font-semibold text-amber-700">{r.metadata?.source||"Internal Playbook"}</span>
+                    <p className="text-sm text-[#555] mt-1 italic">"{(r.text||r.document||"").substring(0,300)}"</p>
                   </div>))}
                 </div>)}
               </div>)}
@@ -1358,7 +1358,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               {ragResults&&(<div className="space-y-2 mt-2">
                 {ragResults.error&&<p className="text-red-600 text-xs">{ragResults.error}</p>}
                 {(ragResults.results||[]).map((r,i)=>(<div key={i} className="card p-3 slide-in">
-                  <div className="flex justify-between mb-1"><span className="text-[11px] text-indigo-600 font-medium">{r.metadata?.source||"Unknown"}</span><span className="text-[11px] text-[#bbb]">dist: {r.distance?.toFixed(3)}</span></div>
+                  <div className="flex justify-between mb-1"><span className="text-sm text-indigo-600 font-medium">{r.metadata?.source||"Unknown"}</span><span className="text-sm text-[#bbb]">dist: {r.distance?.toFixed(3)}</span></div>
                   <p className="text-xs text-[#666]">{r.text?.substring(0,250)}</p></div>))}
               </div>)}
             </div>)}
@@ -1373,14 +1373,14 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     ?(<div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-500"/>
                         <span className="text-xs font-medium text-green-700">Otto Schmidt / LDA</span>
-                        <span className="text-[10px] text-[#999]">connected</span>
+                        <span className="text-xs text-[#999]">connected</span>
                       </div>)
                     :(<div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-amber-400"/>
                         <span className="text-xs text-[#888]">LDA not configured</span>
                       </div>)
                   }
-                  {ldaStatus?.configured&&ldaStatus?.data_assets&&(<p className="text-[10px] text-[#bbb] mt-0.5">{Array.isArray(ldaStatus.data_assets)?ldaStatus.data_assets.length:"?"} data assets available</p>)}
+                  {ldaStatus?.configured&&ldaStatus?.data_assets&&(<p className="text-xs text-[#bbb] mt-0.5">{Array.isArray(ldaStatus.data_assets)?ldaStatus.data_assets.length:"?"} data assets available</p>)}
                 </div>
               </div>
 
@@ -1412,7 +1412,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                       onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor='#ddd8d0';uploadToKB(e.dataTransfer.files)}}>
                       <svg className="w-8 h-8 mx-auto mb-2 text-[#ccc]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
                       <p className="text-sm text-[#888]">Drag & drop files here or click to browse</p>
-                      <p className="text-[11px] text-[#bbb] mt-1">.txt .md .pdf .json .csv supported</p>
+                      <p className="text-sm text-[#bbb] mt-1">.txt .md .pdf .json .csv supported</p>
                       <input ref={kbFileRef} type="file" multiple accept=".txt,.md,.pdf,.json,.csv,.docx" className="hidden" onChange={e=>uploadToKB(e.target.files)}/>
                     </div>
 
@@ -1441,8 +1441,8 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                       <svg className="w-8 h-8 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
                     </div>
                     <p className="text-xs text-[#333] font-medium text-center truncate w-full">{kbCollection||"New Vault"}</p>
-                    <p className="text-[11px] text-[#999]">0 files</p>
-                    <button className="mt-2 px-3 py-1 text-[11px] border border-[#ddd8d0] rounded text-[#666] hover:bg-[#f0ede8] transition flex items-center gap-1">
+                    <p className="text-sm text-[#999]">0 files</p>
+                    <button className="mt-2 px-3 py-1 text-sm border border-[#ddd8d0] rounded text-[#666] hover:bg-[#f0ede8] transition flex items-center gap-1">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg>
                       Update</button>
                   </div>
@@ -1453,7 +1453,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               {kbCollections.length>0&&(<div className="card p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-harvey text-lg text-[#1a1a1a]">Active Vaults</h3>
-                  <span className="text-[11px] text-[#999]">Used automatically during contract review</span>
+                  <span className="text-sm text-[#999]">Used automatically during contract review</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                   {kbCollections.map((c,i)=>{
@@ -1466,16 +1466,16 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-[#1a1a1a] font-medium truncate">{c.name}</p>
-                        <p className="text-[11px] text-[#999]">{c.count.toLocaleString()} chunks indexed</p>
+                        <p className="text-sm text-[#999]">{c.count.toLocaleString()} chunks indexed</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {isPlaybook&&<span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-medium border border-indigo-100">⚖️ Playbook</span>}
-                        <span className="text-[10px] px-2 py-0.5 bg-green-50 text-green-700 rounded-full">● Active</span>
+                        {isPlaybook&&<span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-medium border border-indigo-100">⚖️ Playbook</span>}
+                        <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 rounded-full">● Active</span>
                       </div>
                     </div>);
                   })}
                 </div>
-                <p className="text-[11px] text-[#bbb] mt-3">Vaults tagged as Playbook are automatically injected into every contract review as firm standards.</p>
+                <p className="text-sm text-[#bbb] mt-3">Vaults tagged as Playbook are automatically injected into every contract review as firm standards.</p>
               </div>)}
 
               {/* Status messages */}
@@ -1487,12 +1487,12 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <p className="text-sm text-green-700 font-semibold">✓ Upload complete — '{kbResults.collection}'</p>
                 {(kbResults.files||[]).map((f,i)=>{
                   const chunks=f.chunks||0;
-                  return(<p key={i} className="text-[11px] text-[#555]">
+                  return(<p key={i} className="text-sm text-[#555]">
                     {f.name}: {chunks>0?<b className="text-green-700">{chunks} new chunks indexed</b>:<span className="text-amber-600 font-medium">already indexed (no new content)</span>}
                     {f.error&&<span className="text-red-500"> — {f.error}</span>}
                   </p>);
                 })}
-                {kbResults.collection_total_chunks!=null&&<p className="text-[11px] text-green-700 font-semibold border-t border-green-200 pt-1.5 mt-1">Vault total: {kbResults.collection_total_chunks} chunks — searched automatically on every contract review</p>}
+                {kbResults.collection_total_chunks!=null&&<p className="text-sm text-green-700 font-semibold border-t border-green-200 pt-1.5 mt-1">Vault total: {kbResults.collection_total_chunks} chunks — searched automatically on every contract review</p>}
               </div>)}
               {kbResults?.error&&(<div className="bg-red-50 border border-red-200 rounded-lg p-4"><p className="text-xs text-red-600 font-medium">Upload failed</p><p className="text-xs text-red-500 mt-0.5">{kbResults.error}</p></div>)}
             </div>)}
@@ -1507,7 +1507,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <div className="flex items-center gap-2 mb-4">
                   <div className={`w-2 h-2 rounded-full ${pipelineRunning?"bg-indigo-500 animate-pulse":"bg-green-500"}`}/>
                   <h3 className="card-header text-base">10-Step DPA Pipeline</h3>
-                  {pipelineResult?.matter_id&&<span className="text-[10px] font-mono text-[#999] ml-auto">{pipelineResult.matter_id}</span>}
+                  {pipelineResult?.matter_id&&<span className="text-xs font-mono text-[#999] ml-auto">{pipelineResult.matter_id}</span>}
                 </div>
                 <PipelineProgress running={pipelineRunning} pipelineResult={pipelineResult} animStep={pipelineAnimStep}/>
 
@@ -1518,21 +1518,21 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                       <ScoreRing score={pipelineResult.risk?.risk_score||0}/>
                       <div>
                         <p className="text-xs font-semibold text-[#333]">{pipelineResult.memo?.recommendation||"NEGOTIATE"} — {pipelineResult.risk?.risk_level||"?"} RISK</p>
-                        <p className="text-[11px] text-[#666] mt-0.5">{pipelineResult.risk?.executive_summary||""}</p>
+                        <p className="text-sm text-[#666] mt-0.5">{pipelineResult.risk?.executive_summary||""}</p>
                       </div>
                     </div>
 
                     {/* GDPR Card */}
                     {pipelineResult.gdpr&&(
                       <div className="bg-[#fafaf9] rounded-lg p-3 border border-[#e8e5e0]">
-                        <p className="text-[10px] font-semibold text-[#999] uppercase mb-1.5">GDPR Compliance</p>
-                        <div className="flex gap-3 flex-wrap text-[11px]">
+                        <p className="text-xs font-semibold text-[#999] uppercase mb-1.5">GDPR Compliance</p>
+                        <div className="flex gap-3 flex-wrap text-sm">
                           <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">Score: {pipelineResult.gdpr.gdpr_score}/10</span>
                           <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">Transfer: {pipelineResult.gdpr.transfer_mechanism||"?"}</span>
                           <span className={`px-2 py-0.5 rounded-full ${pipelineResult.gdpr.subprocessor_clause?"bg-green-50 text-green-700":"bg-red-50 text-red-700"}`}>Subprocessor: {pipelineResult.gdpr.subprocessor_clause?"✓":"✗"}</span>
                           <span className={`px-2 py-0.5 rounded-full ${pipelineResult.gdpr.breach_notification?"bg-green-50 text-green-700":"bg-red-50 text-red-700"}`}>Breach notif.: {pipelineResult.gdpr.breach_notification?"✓":"✗"}</span>
                         </div>
-                        {(pipelineResult.gdpr.issues||[]).map((issue,i)=>(<p key={i} className="text-[11px] text-[#555] mt-1.5">⚠️ <b>{issue.article}</b>: {issue.issue}</p>))}
+                        {(pipelineResult.gdpr.issues||[]).map((issue,i)=>(<p key={i} className="text-sm text-[#555] mt-1.5">⚠️ <b>{issue.article}</b>: {issue.issue}</p>))}
                       </div>
                     )}
 
@@ -1542,9 +1542,9 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                         <summary className="px-3 py-2.5 text-xs font-semibold text-[#333] cursor-pointer">✏️ Proposed Redlines ({pipelineResult.redlines.redlines.length})</summary>
                         <div className="px-3 pb-3 space-y-2">
                           {pipelineResult.redlines.redlines.map((r,i)=>(<div key={i} className="border-t border-[#f0ede8] pt-2">
-                            <p className="text-[11px] font-medium text-[#333]">{r.clause}</p>
-                            <p className="text-[10px] text-red-600 mt-0.5">Issue: {r.original_issue}</p>
-                            <p className="text-[10px] text-green-700 mt-0.5 bg-green-50 rounded p-1.5">{r.proposed_redline}</p>
+                            <p className="text-sm font-medium text-[#333]">{r.clause}</p>
+                            <p className="text-xs text-red-600 mt-0.5">Issue: {r.original_issue}</p>
+                            <p className="text-xs text-green-700 mt-0.5 bg-green-50 rounded p-1.5">{r.proposed_redline}</p>
                           </div>))}
                         </div>
                       </details>
@@ -1554,7 +1554,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     {pipelineResult.memo?.memo&&(
                       <details className="bg-[#fafaf9] rounded-lg border border-[#e8e5e0]">
                         <summary className="px-3 py-2.5 text-xs font-semibold text-[#333] cursor-pointer">📄 QA Legal Memo</summary>
-                        <p className="px-3 pb-3 text-[11px] text-[#555] leading-relaxed">{pipelineResult.memo.memo}</p>
+                        <p className="px-3 pb-3 text-sm text-[#555] leading-relaxed">{pipelineResult.memo.memo}</p>
                       </details>
                     )}
 
@@ -1563,10 +1563,10 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                       <div className="flex items-center gap-2">
                         <span className="text-sm">⚖️</span>
                         <div className="flex-1">
-                          <p className="text-[11px] font-semibold text-indigo-800">
+                          <p className="text-sm font-semibold text-indigo-800">
                             {simplifyResult?.status==="awaiting_executive_approval"?"✅ Executive draft sent to Mr. Peter":"📌 Awaiting Legal Team Review"}
                           </p>
-                          <p className="text-[10px] text-indigo-600">
+                          <p className="text-xs text-indigo-600">
                             {simplifyResult?.status==="awaiting_executive_approval"
                               ?`Plain-English memo ${simplifyResult.executive_slack_sent?"sent via Slack":"generated (no executive webhook yet)"}`
                               :`Legal team notified ${pipelineResult.legal_slack_sent?"via Slack ✓":"(no legal_team webhook configured)"} — Matter ${pipelineResult.matter_id}`}
@@ -1576,7 +1576,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
 
                       {simplifyResult?.status!=="awaiting_executive_approval"&&(<>
                         <div>
-                          <label className="text-[10px] font-semibold text-indigo-700 block mb-1">Legal team notes / corrections (optional)</label>
+                          <label className="text-xs font-semibold text-indigo-700 block mb-1">Legal team notes / corrections (optional)</label>
                           <textarea value={legalNotes} onChange={e=>setLegalNotes(e.target.value)} rows={3}
                             className="w-full rounded-lg px-3 py-2 text-xs border border-indigo-200 focus:border-indigo-500 focus:outline-none resize-none bg-white"
                             placeholder="e.g. The data retention clause needs to be updated to 30 days. The liability cap is acceptable. Remove the arbitration clause..."/>
@@ -1591,15 +1591,15 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
 
                       {simplifyResult?.simplified&&(
                         <div className="bg-white rounded-lg p-3 border border-green-200 space-y-2">
-                          <p className="text-[10px] font-semibold text-green-800 uppercase">Plain-English Summary (sent to Mr. Peter)</p>
-                          <p className="text-[11px] text-[#444] leading-relaxed">{simplifyResult.simplified.executive_summary}</p>
+                          <p className="text-xs font-semibold text-green-800 uppercase">Plain-English Summary (sent to Mr. Peter)</p>
+                          <p className="text-sm text-[#444] leading-relaxed">{simplifyResult.simplified.executive_summary}</p>
                           {(simplifyResult.simplified.plain_risks||[]).length>0&&(
-                            <ul className="space-y-0.5">{simplifyResult.simplified.plain_risks.map((r,i)=><li key={i} className="text-[11px] text-[#555]">• {r}</li>)}</ul>
+                            <ul className="space-y-0.5">{simplifyResult.simplified.plain_risks.map((r,i)=><li key={i} className="text-sm text-[#555]">• {r}</li>)}</ul>
                           )}
-                          <p className="text-[11px] font-medium text-[#333]">Decision needed: {simplifyResult.simplified.decision_needed}</p>
+                          <p className="text-sm font-medium text-[#333]">Decision needed: {simplifyResult.simplified.decision_needed}</p>
                         </div>
                       )}
-                      {simplifyResult?.error&&<p className="text-[11px] text-red-600 bg-red-50 rounded p-2">{simplifyResult.error}</p>}
+                      {simplifyResult?.error&&<p className="text-sm text-red-600 bg-red-50 rounded p-2">{simplifyResult.error}</p>}
                     </div>
                   </div>
                 )}
@@ -1610,7 +1610,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
             {loading&&(<div className="card p-10 text-center">
               <div className="inline-block w-6 h-6 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin mb-3"/>
               <p className="text-[#888] text-sm">Agents are processing your request...</p>
-              <p className="text-[11px] text-[#bbb] mt-1">Large contracts are auto-truncated to 15,000 chars for speed.</p>
+              <p className="text-sm text-[#bbb] mt-1">Large contracts are auto-truncated to 15,000 chars for speed.</p>
             </div>)}
 
             {!loading&&!result&&(<div className="card p-10 text-center">
@@ -1622,13 +1622,13 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
             {result?.error&&(<div className="bg-red-50 border border-red-200 rounded-xl p-5">
               <h3 className="text-red-700 font-semibold text-sm mb-1">Connection Error</h3>
               <p className="text-xs text-red-500">{result.error}</p>
-              <p className="text-[11px] text-[#999] mt-2">Start the backend: <code className="text-red-400">python -m uvicorn backend.main:app --reload --port 8000</code></p>
+              <p className="text-sm text-[#999] mt-2">Start the backend: <code className="text-red-400">python -m uvicorn backend.main:app --reload --port 8000</code></p>
             </div>)}
 
             {/* ── Intake Brief (if provided) ── */}
             {result?.intake_brief&&!result?.error&&(<div className="card p-4 border-l-4 border-l-indigo-400 slide-in">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">Intake Context</span>
+                <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">Intake Context</span>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {Object.entries(result.intake_brief).map(([k,v])=>v?(<div key={k} className="text-xs"><span className="text-[#999] capitalize">{k.replace(/([A-Z])/g,' $1')}:</span> <span className="text-[#555] font-medium">{v}</span></div>):null)}
@@ -1644,7 +1644,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     <p className="text-xs text-[#999] mt-1">{rv.contract_type} &middot; {(rv.parties_identified||[]).join(" & ")}</p></div>
                   <ScoreRing score={rv.overall_risk_score||0}/>
                 </div>
-                <div className="flex gap-2 mb-3"><RiskBadge level={rv.risk_level||"MEDIUM"}/><span className="text-[11px] text-[#999]">{(rv.clauses_found||[]).length} clauses flagged</span></div>
+                <div className="flex gap-2 mb-3"><RiskBadge level={rv.risk_level||"MEDIUM"}/><span className="text-sm text-[#999]">{(rv.clauses_found||[]).length} clauses flagged</span></div>
                 <p className="text-sm text-[#555] leading-relaxed">{rv.executive_summary}</p>
               </div>
 
@@ -1656,8 +1656,8 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 </div>
                 <p className="text-xs text-amber-700 leading-relaxed">Identifies risk against firm standards by automatically flagging deviations from your playbook and gold-standard requirements. This contract has been checked against your firm's risk matrix and approved clause library.</p>
                 <div className="flex gap-2 mt-2">
-                  <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">Playbook Check: {(rv.risk_level==="LOW"||rv.risk_level==="MEDIUM")?"Pass":"Flagged"}</span>
-                  <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">{(rv.missing_protections?.length||0)} missing standards</span>
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">Playbook Check: {(rv.risk_level==="LOW"||rv.risk_level==="MEDIUM")?"Pass":"Flagged"}</span>
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">{(rv.missing_protections?.length||0)} missing standards</span>
                 </div>
               </div>
 
@@ -1667,14 +1667,14 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                   <div className="flex items-center gap-2 mb-3">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                     <h3 className="text-sm font-semibold text-indigo-800">Legal Database Insights</h3>
-                    <span className="text-[10px] px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full ml-auto">{result.rag_insights.length} matches</span>
+                    <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full ml-auto">{result.rag_insights.length} matches</span>
                   </div>
                   <div className="space-y-2">
                     {result.rag_insights.map((r,i)=>(
                       <div key={i} className="bg-white rounded-lg p-3 border border-indigo-100 text-xs slide-in" style={{animationDelay:`${i*50}ms`}}>
-                        {r.source&&<p className="text-[10px] text-indigo-400 font-medium uppercase tracking-wide mb-1">{r.source}</p>}
+                        {r.source&&<p className="text-xs text-indigo-400 font-medium uppercase tracking-wide mb-1">{r.source}</p>}
                         <p className="text-[#444] leading-relaxed">{(r.text||r.content||r.document||"").substring(0,200)}{(r.text||r.content||r.document||"").length>200?"…":""}</p>
-                        {r.similarity!=null&&<p className="text-[10px] text-[#bbb] mt-1">Relevance: {Math.round((r.similarity||0)*100)}%</p>}
+                        {r.similarity!=null&&<p className="text-xs text-[#bbb] mt-1">Relevance: {Math.round((r.similarity||0)*100)}%</p>}
                       </div>
                     ))}
                   </div>
@@ -1685,7 +1685,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               {contractText&&(<div className="card p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="card-header text-base">Annotated Contract</h3>
-                  <span className="text-[10px] px-2 py-0.5 bg-[#f5f3f0] rounded text-[#999]">Hover highlighted text for details</span>
+                  <span className="text-xs px-2 py-0.5 bg-[#f5f3f0] rounded text-[#999]">Hover highlighted text for details</span>
                 </div>
                 <ContractViewer text={contractText} clauses={rv.clauses_found||[]}/>
               </div>)}
@@ -1695,9 +1695,9 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-base">📖</span>
                   <h3 className="card-header text-base text-amber-800">Internal Playbook Violations</h3>
-                  <span className="text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full border border-amber-200">{kbCitations.length} non-adherences found</span>
+                  <span className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full border border-amber-200">{kbCitations.length} non-adherences found</span>
                 </div>
-                <p className="text-[11px] text-[#888]">The following clauses conflict with your firm's internal policies and legal standards:</p>
+                <p className="text-sm text-[#888]">The following clauses conflict with your firm's internal policies and legal standards:</p>
                 {kbCitations.map((c,i)=>(
                   <div key={i} className="bg-amber-50 rounded-lg p-3.5 border border-amber-200 space-y-2 slide-in" style={{animationDelay:`${i*60}ms`}}>
                     <div className="flex items-center gap-2">
@@ -1705,10 +1705,10 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                       <span className="text-xs font-semibold text-[#333]">{c.clause_type}</span>
                     </div>
                     <div className="bg-white rounded p-2.5 border border-amber-100">
-                      <p className="text-[10px] font-semibold text-amber-700 uppercase mb-1">Your playbook states ({c.source}):</p>
-                      <p className="text-[11px] text-[#555] italic leading-relaxed">"{c.kb_passage}"</p>
+                      <p className="text-xs font-semibold text-amber-700 uppercase mb-1">Your playbook states ({c.source}):</p>
+                      <p className="text-sm text-[#555] italic leading-relaxed">"{c.kb_passage}"</p>
                     </div>
-                    <p className="text-[11px] text-red-700 font-medium">⚠ This contract does not adhere: {c.issue}</p>
+                    <p className="text-sm text-red-700 font-medium">⚠ This contract does not adhere: {c.issue}</p>
                   </div>
                 ))}
               </div>)}
@@ -1717,11 +1717,11 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               <div className="card p-6 space-y-2">
                 <h3 className="card-header text-base mb-1">Flagged Clauses</h3>
                 {(rv.clauses_found||[]).map((cl,i)=>(<div key={i} className="bg-[#fafaf9] rounded-lg p-3 border border-[#e8e5e0] slide-in" style={{animationDelay:`${i*60}ms`}}>
-                  <div className="flex items-center gap-2 mb-1.5"><RiskBadge level={cl.risk_level}/><span className="text-sm font-medium text-[#333]">{cl.clause_type}</span><span className="text-[11px] text-[#bbb] ml-auto">{cl.section}</span></div>
+                  <div className="flex items-center gap-2 mb-1.5"><RiskBadge level={cl.risk_level}/><span className="text-sm font-medium text-[#333]">{cl.clause_type}</span><span className="text-sm text-[#bbb] ml-auto">{cl.section}</span></div>
                   <p className="text-xs text-[#666] mb-1.5">{cl.explanation}</p>
                   {cl.suggestion&&<p className="text-xs text-blue-600">Suggestion: {cl.suggestion}</p>}
-                  {cl.suggested_replacement&&(<details className="mt-2"><summary className="text-[11px] text-green-700 cursor-pointer hover:text-green-800">View replacement text</summary>
-                    <pre className="text-[11px] text-green-800 bg-green-50 rounded p-2 mt-1 whitespace-pre-wrap border border-green-200">{cl.suggested_replacement}</pre></details>)}
+                  {cl.suggested_replacement&&(<details className="mt-2"><summary className="text-sm text-green-700 cursor-pointer hover:text-green-800">View replacement text</summary>
+                    <pre className="text-sm text-green-800 bg-green-50 rounded p-2 mt-1 whitespace-pre-wrap border border-green-200">{cl.suggested_replacement}</pre></details>)}
                 </div>))}
               </div>
 
@@ -1731,7 +1731,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 {rv.errors_found.map((err,i)=>(<div key={i} className="bg-red-50 rounded-lg p-3 border border-red-200 slide-in">
                   <div className="flex items-center gap-2 mb-1"><RiskBadge level={err.severity||"MEDIUM"}/><span className="text-xs text-red-700 font-medium">{err.type}</span></div>
                   <p className="text-xs text-[#666]">{err.description}</p>
-                  {err.original_text&&<p className="text-[11px] text-[#999] mt-1 italic">"{err.original_text.substring(0,120)}"</p>}
+                  {err.original_text&&<p className="text-sm text-[#999] mt-1 italic">"{err.original_text.substring(0,120)}"</p>}
                 </div>))}
               </div>)}
 
@@ -1740,7 +1740,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 {rv.missing_protections.map((mp,i)=>(<div key={i} className="bg-amber-50 rounded-lg p-3 border border-amber-200">
                   <div className="flex items-center gap-2 mb-1"><RiskBadge level={mp.importance}/><span className="text-sm text-[#333]">{mp.clause_type}</span></div>
                   <p className="text-xs text-[#666]">{mp.recommendation}</p>
-                  {mp.suggested_clause&&<pre className="text-[11px] text-amber-800 bg-amber-50 rounded p-2 mt-2 whitespace-pre-wrap border border-amber-200">{mp.suggested_clause}</pre>}
+                  {mp.suggested_clause&&<pre className="text-sm text-amber-800 bg-amber-50 rounded p-2 mt-2 whitespace-pre-wrap border border-amber-200">{mp.suggested_clause}</pre>}
                 </div>))}
               </div>)}
 
@@ -1759,12 +1759,12 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></div>
                   <h3 className="card-header text-base text-indigo-700">Auto-Research on Flagged Clauses</h3>
-                  <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">Legal Research Agent</span>
+                  <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">Legal Research Agent</span>
                 </div>
                 {result.auto_research.map((ar,i)=>(<div key={i} className="bg-[#fafaf9] rounded-lg p-4 border border-[#e8e5e0] slide-in" style={{animationDelay:`${i*80}ms`}}>
                   <div className="flex items-center gap-2 mb-2"><RiskBadge level={ar.risk_level||"MEDIUM"}/><span className="text-sm font-medium text-[#333]">{ar.clause_type}</span></div>
                   <p className="text-xs text-[#555] leading-relaxed mb-2">{ar.research}</p>
-                  {ar.applicable_laws?.length>0&&(<div className="flex flex-wrap gap-1 mb-2">{ar.applicable_laws.map((l,j)=>(<span key={j} className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded">{l.law||l}</span>))}</div>)}
+                  {ar.applicable_laws?.length>0&&(<div className="flex flex-wrap gap-1 mb-2">{ar.applicable_laws.map((l,j)=>(<span key={j} className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded">{l.law||l}</span>))}</div>)}
                   {ar.recommendation&&<p className="text-xs text-green-700 font-medium">→ {ar.recommendation}</p>}
                 </div>))}
               </div>)}
@@ -1777,10 +1777,10 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 </div>
                 <div className="space-y-2">
                   {result.suggested_actions.map((sa,i)=>(<div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-[#e8e5e0] hover:bg-[#fafaf9] transition">
-                    <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${sa.priority==='high'?'bg-red-500':sa.priority==='medium'?'bg-amber-500':'bg-[#999]'}`}>{i+1}</span>
+                    <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${sa.priority==='high'?'bg-red-500':sa.priority==='medium'?'bg-amber-500':'bg-[#999]'}`}>{i+1}</span>
                     <div className="flex-1">
                       <div className="flex items-center gap-2"><span className="text-sm font-medium text-[#333]">{sa.action.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${sa.priority==='high'?'bg-red-100 text-red-700':sa.priority==='medium'?'bg-amber-100 text-amber-700':'bg-gray-100 text-[#666]'}`}>{sa.priority}</span></div>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${sa.priority==='high'?'bg-red-100 text-red-700':sa.priority==='medium'?'bg-amber-100 text-amber-700':'bg-gray-100 text-[#666]'}`}>{sa.priority}</span></div>
                       <p className="text-xs text-[#666] mt-0.5">{sa.reason}</p>
                     </div>
                   </div>))}
@@ -1789,7 +1789,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
 
               {/* Agents Used */}
               {result?.agents_used?.length>1&&(<div className="card p-4">
-                <div className="flex items-center gap-2 text-[11px] text-[#999]">
+                <div className="flex items-center gap-2 text-sm text-[#999]">
                   <span>Agents used:</span>
                   {result.agents_used.map((a,i)=>(<span key={i} className="px-2 py-0.5 bg-[#f5f3f0] rounded text-[#666] font-medium">{a.replace(/_/g,' ')}</span>))}
                 </div>
@@ -1820,12 +1820,12 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     <span className={`w-2 h-2 rounded-full ${result.approval.status==='pending'?'bg-amber-500 animate-pulse':'bg-green-500'}`}/>
                     {result.approval.status==='pending'?'Awaiting Partner Approval':'Approved'}
                   </span>
-                  <span className="text-[11px] text-[#999]">ID: {result.approval.approval_id}</span>
+                  <span className="text-sm text-[#999]">ID: {result.approval.approval_id}</span>
                 </div>
                 <p className="text-sm text-[#555]">{result.approval.message}</p>
-                {result.approval.slack_sent&&<p className="text-[11px] text-green-600 mt-1">Slack notification sent to partner channel</p>}
-                {result.approval.slack_error&&<p className="text-[11px] text-red-500 mt-1">Slack error: {result.approval.slack_error}</p>}
-                {!result.approval.slack_sent&&!result.approval.slack_error&&<p className="text-[11px] text-amber-600 mt-1">Slack not configured — approve via dashboard or API</p>}
+                {result.approval.slack_sent&&<p className="text-sm text-green-600 mt-1">Slack notification sent to partner channel</p>}
+                {result.approval.slack_error&&<p className="text-sm text-red-500 mt-1">Slack error: {result.approval.slack_error}</p>}
+                {!result.approval.slack_sent&&!result.approval.slack_error&&<p className="text-sm text-amber-600 mt-1">Slack not configured — approve via dashboard or API</p>}
 
                 {result.approval.status==='pending'&&(<div className="flex gap-2 mt-3">
                   <button onClick={async()=>{try{const r=await fetch(`${API}/api/approvals/${result.approval.approval_id}/approve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:'Approved via dashboard'})});const d=await r.json();if(d.status==='approved'){setResult(p=>({...p,approval:{...p.approval,status:'approved'},status:'approved'}))}}catch(e){console.error(e)}}}
@@ -1858,12 +1858,12 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <h3 className="card-header text-base text-indigo-700 mb-2">Recommendations</h3>
                 {rs.recommendations.map((r,i)=><p key={i} className="text-xs text-[#555] mb-1">{i+1}. {r}</p>)}
               </div>)}
-              {rs.disclaimer&&<p className="text-[11px] text-[#bbb] italic px-1">{rs.disclaimer}</p>}
+              {rs.disclaimer&&<p className="text-sm text-[#bbb] italic px-1">{rs.disclaimer}</p>}
             </div>)}
 
             {/* Audit Trail */}
             {result?.audit_trail?.length>0&&(<div className="card p-6"><AuditTrail trail={result.audit_trail}/></div>)}
-            {result?.id&&(<div className="card p-3 flex justify-between text-[11px] text-[#999]">
+            {result?.id&&(<div className="card p-3 flex justify-between text-sm text-[#999]">
               <span>Matter <code className="text-[#666] font-medium">{result.id}</code></span><span className="text-green-600">{result.status}</span></div>)}
           </div>
         </div>
@@ -1887,14 +1887,14 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                   </div>
                   <h3 className="text-sm font-semibold text-[#1a1a1a]">Slack Workspaces / Approvers</h3>
                 </div>
-                <button onClick={()=>setShowSlackGuide(p=>!p)} className="text-[10px] px-2.5 py-1 rounded-lg border border-[#ddd8d0] text-[#666] hover:bg-[#f5f3f0]">
+                <button onClick={()=>setShowSlackGuide(p=>!p)} className="text-xs px-2.5 py-1 rounded-lg border border-[#ddd8d0] text-[#666] hover:bg-[#f5f3f0]">
                   {showSlackGuide?"Hide guide":"How to set up →"}
                 </button>
               </div>
 
               {/* Inline setup guide */}
               {showSlackGuide&&(
-                <div className="bg-[#fafaf9] border border-[#e8e5e0] rounded-xl p-4 space-y-2.5 text-[11px]">
+                <div className="bg-[#fafaf9] border border-[#e8e5e0] rounded-xl p-4 space-y-2.5 text-sm">
                   <p className="font-semibold text-[#333] text-xs">Create a new Slack workspace + webhook in 3 minutes:</p>
                   <div className="space-y-2">
                     {[
@@ -1904,14 +1904,14 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                       {n:"4",t:"Copy the URL",d:"Copy the webhook URL that looks like https://hooks.slack.com/services/T.../B.../... and paste it below"},
                     ].map(s=>(
                       <div key={s.n} className="flex gap-2.5">
-                        <div className="w-5 h-5 rounded-full bg-[#4a154b] text-white text-[10px] flex items-center justify-center flex-shrink-0 font-bold">{s.n}</div>
+                        <div className="w-5 h-5 rounded-full bg-[#4a154b] text-white text-xs flex items-center justify-center flex-shrink-0 font-bold">{s.n}</div>
                         <div><p className="font-medium text-[#333]">{s.t}</p><p className="text-[#777] mt-0.5 leading-relaxed">{s.d}</p></div>
                       </div>
                     ))}
                   </div>
                   <div className="pt-1 flex gap-2">
-                    <a href="https://slack.com/get-started" target="_blank" className="px-3 py-1.5 rounded-lg bg-[#4a154b] text-white text-[11px] hover:opacity-90">Create Workspace →</a>
-                    <a href="https://api.slack.com/apps" target="_blank" className="px-3 py-1.5 rounded-lg border border-[#ddd8d0] text-[#444] text-[11px] hover:bg-[#f5f3f0]">Create App →</a>
+                    <a href="https://slack.com/get-started" target="_blank" className="px-3 py-1.5 rounded-lg bg-[#4a154b] text-white text-sm hover:opacity-90">Create Workspace →</a>
+                    <a href="https://api.slack.com/apps" target="_blank" className="px-3 py-1.5 rounded-lg border border-[#ddd8d0] text-[#444] text-sm hover:bg-[#f5f3f0]">Create App →</a>
                   </div>
                 </div>
               )}
@@ -1919,19 +1919,19 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               {/* Connected workspaces list */}
               {slackTargets.length>0&&(
                 <div className="space-y-1.5">
-                  <p className="text-[10px] text-[#999] uppercase font-semibold tracking-wider">Connected ({slackTargets.length})</p>
+                  <p className="text-xs text-[#999] uppercase font-semibold tracking-wider">Connected ({slackTargets.length})</p>
                   {slackTargets.map((t,i)=>(
                     <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#fafaf9] border border-[#e8e5e0]">
                       <div className="w-5 h-5 rounded bg-[#4a154b] flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-[9px] font-bold">{t.name[0]}</span>
+                        <span className="text-white text-[11px] font-bold">{t.name[0]}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-[#333]">{t.name}</p>
-                        <p className="text-[10px] text-[#999] font-mono truncate">{t.webhook_preview}</p>
+                        <p className="text-xs text-[#999] font-mono truncate">{t.webhook_preview}</p>
                       </div>
-                      {t.role==="legal_team"&&<span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">⚖️ Legal</span>}
-                      {t.role==="executive"&&<span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded-full">👤 Exec</span>}
-                      <span className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 rounded-full">● live</span>
+                      {t.role==="legal_team"&&<span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">⚖️ Legal</span>}
+                      {t.role==="executive"&&<span className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded-full">👤 Exec</span>}
+                      <span className="text-xs px-1.5 py-0.5 bg-green-50 text-green-700 rounded-full">● live</span>
                       {t.name!=="Primary"&&<button onClick={()=>removeTarget(t.name)} className="text-[#ccc] hover:text-red-400 text-xs ml-1">✕</button>}
                     </div>
                   ))}
@@ -1963,11 +1963,11 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                     {slackTesting?"Sending...":"Send Test"}
                   </button>
                 </div>
-                {slackTestMsg&&<p className={`text-[11px] rounded px-2 py-1 ${slackTestMsg.startsWith("Error")?"bg-red-50 text-red-600":"bg-green-50 text-green-700"}`}>{slackTestMsg}</p>}
+                {slackTestMsg&&<p className={`text-sm rounded px-2 py-1 ${slackTestMsg.startsWith("Error")?"bg-red-50 text-red-600":"bg-green-50 text-green-700"}`}>{slackTestMsg}</p>}
               </div>
             </div>
 
-            <div className="border-t border-[#f0ede8] pt-4 text-[11px] text-[#bbb]">
+            <div className="border-t border-[#f0ede8] pt-4 text-sm text-[#bbb]">
               <p>OpenAI API: <span className={slackStatus?.openai_configured?"text-green-600":"text-red-500"}>{slackStatus?.openai_configured?"✓ Configured":"✗ Missing — set OPENAI_API_KEY in .env"}</span></p>
             </div>
           </div>
