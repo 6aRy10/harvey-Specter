@@ -107,20 +107,38 @@ async def list_matters():
 
 @app.post("/api/extract-pdf")
 async def extract_pdf(file: UploadFile = File(...)):
-    """Extract text from an uploaded PDF using pypdf."""
+    """Extract text from PDF — text-based via pypdf, scanned via OpenAI Vision OCR."""
     try:
-        import io
+        import io, base64
         from pypdf import PdfReader
         contents = await file.read()
+
+        # Step 1: Try pypdf (fast, works for text-based PDFs)
         reader = PdfReader(io.BytesIO(contents))
-        text = ""
-        for page in reader.pages:
-            page_text = page.extract_text() or ""
-            text += page_text + "\n"
-        text = text.strip()
-        if len(text) < 100:
-            return {"text": "", "error": "scanned_pdf", "message": "This appears to be a scanned/image PDF. Please convert to text format first."}
-        return {"text": text, "pages": len(reader.pages), "chars": len(text)}
+        text = "".join(p.extract_text() or "" for p in reader.pages).strip()
+        if len(text) >= 200:
+            return {"text": text, "pages": len(reader.pages), "chars": len(text), "method": "text"}
+
+        # Step 2: Scanned PDF — OCR each page via OpenAI Vision
+        import fitz  # pymupdf
+        doc = fitz.open(stream=contents, filetype="pdf")
+        MAX_PAGES = 8
+        all_text = []
+        for i in range(min(doc.page_count, MAX_PAGES)):
+            pix = doc[i].get_pixmap(dpi=120)
+            b64 = base64.b64encode(pix.tobytes("png")).decode()
+            resp = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}", "detail": "low"}},
+                    {"type": "text", "text": "Extract ALL text from this contract page verbatim. Return only the text, no comments."}
+                ]}],
+                max_tokens=1500,
+            )
+            all_text.append(resp.choices[0].message.content.strip())
+        extracted = "\n\n".join(all_text)
+        return {"text": extracted, "pages": doc.page_count, "chars": len(extracted), "method": "ocr",
+                "note": f"OCR applied ({min(doc.page_count, MAX_PAGES)}/{doc.page_count} pages)"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

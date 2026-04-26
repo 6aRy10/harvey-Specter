@@ -371,7 +371,8 @@ state and federal courts located in Wilmington, Delaware.`);};
           setChatMsgs(p=>[...p,{role:"ai",text:`⚠️ "${f.name}" is a scanned/image PDF — text can't be extracted automatically. Please export it as .txt or copy-paste the contract text into a .txt file and upload that instead.`,ts:new Date().toLocaleTimeString()}]);
         } else if(d.text){
           setContractText(d.text);
-          setChatMsgs(p=>[...p,{role:"ai",text:`✅ Extracted ${d.pages} pages (${d.chars.toLocaleString()} chars) from "${f.name}". Ready to review.`,ts:new Date().toLocaleTimeString()}]);
+          const method=d.method==="ocr"?" (OCR — AI vision)":"";
+          setChatMsgs(p=>[...p,{role:"ai",text:"✅ Extracted "+d.pages+" pages ("+d.chars.toLocaleString()+" chars) from \""+f.name+"\""+method+". Ready to review.",ts:new Date().toLocaleTimeString()}]);
         }
       }catch(err){
         setChatMsgs(p=>[...p.filter(m=>!m.loading),{role:"ai",text:"Upload error: "+err.message,ts:new Date().toLocaleTimeString()}]);
