@@ -268,7 +268,6 @@ function PipelineProgress({running,pipelineResult,animStep}){
 
   const stepExpanded=(num)=>{
     if(!d)return null;
-    if(num===3)(d.clauses?.clauses||[]).slice(0,5);
     const cls=d.clauses?.clauses||[];
     if(num===3)return(<div className="space-y-1 mt-2">{cls.slice(0,5).map((c,i)=>(<div key={i} className="flex gap-2 items-start text-xs"><span className={`px-1 rounded font-bold flex-shrink-0 ${c.risk==="HIGH"?"bg-red-100 text-red-700":c.risk==="MEDIUM"?"bg-amber-100 text-amber-700":"bg-green-100 text-green-700"}`}>{c.risk}</span><span className="text-[#555]"><b>{c.name}</b>: {c.issue}</span></div>))}</div>);
     if(num===4)return(<div className="space-y-1 mt-2">{(d.gdpr?.issues||[]).map((i,idx)=>(<p key={idx} className="text-xs text-[#555]">⚠️ <b>{i.article}</b>: {i.issue}</p>))}</div>);
@@ -849,10 +848,11 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
   };
 
   if(approveData&&!approveDecided){
-    const rec=approveData.recommendation||approveData.simplified?.recommendation||"?";
-    const risks=approveData.plain_risks||approveData.simplified?.plain_risks||[];
-    const summary=approveData.executive_summary||approveData.simplified?.executive_summary||"";
-    const decision=approveData.decision_needed||approveData.simplified?.decision_needed||"";
+    const sm=approveData.simplified_memo||approveData.simplified||{};
+    const rec=approveData.recommendation||sm.recommendation||"?";
+    const risks=approveData.plain_risks||sm.plain_risks||[];
+    const summary=approveData.executive_summary||sm.executive_summary||approveData.memo?.memo?.substring(0,400)||"";
+    const decision=approveData.decision_needed||sm.decision_needed||(rec==="NEGOTIATE"?"Negotiate and return for re-review":rec==="REJECT"?"Reject this contract":"Approve to proceed");
     const recColors={APPROVE:"bg-green-50 border-green-300 text-green-800",REJECT:"bg-red-50 border-red-300 text-red-800",NEGOTIATE:"bg-amber-50 border-amber-300 text-amber-800"};
     return(
       <div className="min-h-screen dash-light flex items-center justify-center p-6">

@@ -666,28 +666,9 @@ async def run_pipeline(req: PipelineRequest):
         rag_gdpr = rag_context("GDPR data processing agreement Art.28 Schrems II subprocessor breach notification", "legal_knowledge", 3)
         rag_policies = rag_context(f"{req.matter_name} contract policy compliance standard", "firm_policies", 3)
 
-        async def extract_clauses():
-            rag_block = f"\n\nRelevant legal knowledge:\n{rag_clauses}" if rag_clauses else ""
-            r = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Extract key DPA clauses. Return JSON: {\"clauses\":[{\"name\":\"...\",\"text\":\"...\",\"risk\":\"HIGH|MEDIUM|LOW\",\"issue\":\"...\"}]}"},
-                    {"role": "user", "content": text + rag_block}
-                ],
-                response_format={"type": "json_object"}, max_tokens=600, temperature=0.1
-            )
-            return json.loads(r.choices[0].message.content)
-
-        async def gdpr_compliance():
-            r = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a GDPR compliance agent. Check this DPA for: data transfer safeguards (Schrems II), subprocessor obligations, data subject rights, breach notification, DPA Art.28 requirements. Return JSON: {\"gdpr_score\":0-10,\"transfer_mechanism\":\"...\",\"subprocessor_clause\":true/false,\"breach_notification\":true/false,\"issues\":[{\"article\":\"...\",\"issue\":\"...\",\"severity\":\"HIGH|MEDIUM|LOW\"}]}"},
-                    {"role": "user", "content": text}
-                ],
-                response_format={"type": "json_object"}, max_tokens=500, temperature=0.1
-            )
-            return json.loads(r.choices[0].message.content)
+        clause_rag_block = f"\n\nRelevant legal knowledge (use to identify risks):\n{rag_clauses}" if rag_clauses else ""
+        gdpr_rag_block = f"\n\nGDPR reference (use to check compliance):\n{rag_gdpr}" if rag_gdpr else ""
+        policy_block = f"\n\nFirm policy standards:\n{rag_policies}" if rag_policies else ""
 
         loop = asyncio.get_event_loop()
         clauses_result, gdpr_result = await asyncio.gather(
@@ -695,7 +676,7 @@ async def run_pipeline(req: PipelineRequest):
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "Extract key DPA clauses. Return JSON: {\"clauses\":[{\"name\":\"...\",\"text\":\"...\",\"risk\":\"HIGH|MEDIUM|LOW\",\"issue\":\"...\"}]}"},
-                    {"role": "user", "content": text}
+                    {"role": "user", "content": text + clause_rag_block + policy_block}
                 ],
                 response_format={"type": "json_object"}, max_tokens=600, temperature=0.1
             )),
@@ -703,7 +684,7 @@ async def run_pipeline(req: PipelineRequest):
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "GDPR compliance agent. Check DPA for: Schrems II transfer safeguards, subprocessor obligations, breach notification, Art.28 requirements. Return JSON: {\"gdpr_score\":7,\"transfer_mechanism\":\"SCCs\",\"subprocessor_clause\":true,\"breach_notification\":true,\"issues\":[{\"article\":\"Art.28\",\"issue\":\"...\",\"severity\":\"HIGH\"}]}"},
-                    {"role": "user", "content": text}
+                    {"role": "user", "content": text + gdpr_rag_block}
                 ],
                 response_format={"type": "json_object"}, max_tokens=500, temperature=0.1
             ))
