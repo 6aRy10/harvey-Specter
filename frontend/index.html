@@ -433,21 +433,21 @@ state and federal courts located in Wilmington, Delaware.`);};
         {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Unfair termination clause, excessive non-compete"},
       ],
       saas:[
-        {id:"goal",question:"What are you reviewing this SaaS agreement for?",type:"select",options:["Vendor due diligence","Negotiate pricing/terms","Data security review","Full legal review"]},
+        {id:"goal",question:"What are you reviewing this SaaS agreement for?",type:"multiselect",options:["Vendor due diligence","Negotiate pricing/terms","Data security review","Full legal review"]},
         {id:"role",question:"Are you the provider or customer?",type:"select",options:["SaaS Provider","Customer/Buyer"]},
         {id:"deadline",question:"When is the contract deadline?",type:"text",placeholder:"e.g., Renewal is in 2 weeks"},
         {id:"concern",question:"Key concern?",type:"select",options:["SLA guarantees","Data ownership","Auto-renewal trap","Liability caps"]},
         {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Lock in favorable SLA"},
       ],
       consulting:[
-        {id:"goal",question:"What do you need from this consulting agreement review?",type:"select",options:["Protect our IP","Ensure deliverables are clear","Check payment terms","Full risk review"]},
+        {id:"goal",question:"What do you need from this consulting agreement review?",type:"multiselect",options:["Protect our IP","Ensure deliverables are clear","Check payment terms","Full risk review"]},
         {id:"role",question:"Are you the consultant or the client?",type:"select",options:["Consultant","Client"]},
         {id:"deadline",question:"When do you need it back?",type:"text",placeholder:"e.g., Before kickoff meeting Thursday"},
         {id:"bestcase",question:"Best-case outcome?",type:"text",placeholder:"e.g., Clear scope, IP stays with us"},
         {id:"worstcase",question:"Worst-case to avoid?",type:"text",placeholder:"e.g., Scope creep with no extra pay"},
       ],
       general:[
-        {id:"goal",question:"What are you looking for from this review?",type:"select",options:["Full risk assessment","Check if safe to sign","Identify missing clauses","Negotiate better terms","Compliance check"]},
+        {id:"goal",question:"What are you looking for from this review?",type:"multiselect",options:["Full risk assessment","Check if safe to sign","Identify missing clauses","Negotiate better terms","Compliance check"]},
         {id:"deadline",question:"When do you need this back?",type:"text",placeholder:"e.g., End of day, 48 hours, ASAP"},
         {id:"bestcase",question:"What's your best-case outcome?",type:"text",placeholder:"e.g., Sign with minor changes"},
         {id:"worstcase",question:"What's the worst-case scenario to avoid?",type:"text",placeholder:"e.g., Unlimited liability exposure"},
@@ -589,7 +589,12 @@ state and federal courts located in Wilmington, Delaware.`);};
                 <div className="space-y-2.5">
                   {intakeQs.map((q,i)=>(<div key={q.id} className="slide-in" style={{animationDelay:`${i*50}ms`}}>
                     <label className="text-xs font-medium text-[#444] block mb-1">{q.question}</label>
-                    {q.type==="select"?(
+                    {q.type==="multiselect"?(
+                      <div className="flex flex-wrap gap-1">
+                        {q.options.map(o=>{const sel=(Array.isArray(q.answer)?q.answer:[]).includes(o);return(<button key={o} onClick={()=>{const cur=Array.isArray(q.answer)?q.answer:[];updateIntakeAnswer(q.id,sel?cur.filter(x=>x!==o):[...cur,o]);}}
+                          className={`px-2.5 py-1 rounded text-[11px] transition border ${sel?'bg-indigo-600 text-white border-indigo-600':'bg-white text-[#555] border-[#e0ddd8] hover:border-indigo-300'}`}>{o}</button>);})}
+                      </div>
+                    ):q.type==="select"?(
                       <div className="flex flex-wrap gap-1">
                         {q.options.map(o=>(<button key={o} onClick={()=>updateIntakeAnswer(q.id,o)}
                           className={`px-2.5 py-1 rounded text-[11px] transition border ${q.answer===o?'bg-indigo-600 text-white border-indigo-600':'bg-white text-[#555] border-[#e0ddd8] hover:border-indigo-300'}`}>{o}</button>))}
