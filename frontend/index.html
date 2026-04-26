@@ -67,7 +67,7 @@ const{useState,useEffect,useRef,useCallback}=React;
 /* ───────────── LANDING PAGE ───────────── */
 function LandingPage({onEnter}){
   const vidRef=useRef();
-  useEffect(()=>{const v=vidRef.current;if(v){v.muted=true;v.volume=0;const attempt=()=>{v.muted=true;v.volume=0;v.load();v.play().catch(()=>{});};attempt();document.addEventListener('click',attempt,{once:true});document.addEventListener('touchstart',attempt,{once:true});return()=>{document.removeEventListener('click',attempt);document.removeEventListener('touchstart',attempt);}}},[]);
+  useEffect(()=>{const v=vidRef.current;if(!v)return;v.muted=true;v.volume=0;v.play().catch(()=>{});const resume=()=>{v.muted=true;v.play().catch(()=>{})};document.addEventListener('click',resume,{once:true});document.addEventListener('touchstart',resume,{once:true});return()=>{document.removeEventListener('click',resume);document.removeEventListener('touchstart',resume);};},[]);
   return(
     <div className="relative min-h-screen bg-black overflow-hidden">
       {/* ── Background: video if available, cinematic CSS fallback ── */}
