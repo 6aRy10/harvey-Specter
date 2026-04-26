@@ -694,9 +694,15 @@ async def run_pipeline(req: PipelineRequest):
             else "GDPR data processing agreement Art.28 Schrems II subprocessor breach notification"
         )
 
-        rag_clauses = rag_context(clause_rag_query, "legal_knowledge", 3)
-        rag_gdpr = rag_context(compliance_rag_query, "legal_knowledge", 3)
-        rag_policies = rag_context(f"{req.matter_name} contract policy compliance standard", "firm_policies", 3)
+        # ── All 5 RAG lookups in parallel (no GPT, just embeddings+search) ──
+        loop = asyncio.get_event_loop()
+        (rag_clauses, rag_gdpr, rag_policies, rag_risk, rag_memo) = await asyncio.gather(
+            loop.run_in_executor(None, lambda: rag_context(clause_rag_query, "legal_knowledge", 3)),
+            loop.run_in_executor(None, lambda: rag_context(compliance_rag_query, "legal_knowledge", 3)),
+            loop.run_in_executor(None, lambda: rag_context(f"{req.matter_name} contract policy compliance standard", "firm_policies", 3)),
+            loop.run_in_executor(None, lambda: rag_context(f"risk assessment {contract_type} {req.jurisdiction}", "legal_knowledge", 2)),
+            loop.run_in_executor(None, lambda: rag_context(f"{req.matter_name} approval memo standard recommendation", "firm_policies", 3)),
+        )
 
         clause_rag_block = f"\n\nRelevant legal knowledge (use to identify risks):\n{rag_clauses}" if rag_clauses else ""
         gdpr_rag_block = f"\n\nCompliance reference:\n{rag_gdpr}" if rag_gdpr else ""
@@ -719,7 +725,6 @@ async def run_pipeline(req: PipelineRequest):
             + "Return JSON: {\"gdpr_score\":7,\"transfer_mechanism\":\"SCCs|N/A\",\"subprocessor_clause\":true,\"breach_notification\":true,\"issues\":[{\"article\":\"...\",\"issue\":\"...\",\"severity\":\"HIGH\"}]}"
         )
 
-        loop = asyncio.get_event_loop()
         clauses_result, gdpr_result = await asyncio.gather(
             loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -727,7 +732,7 @@ async def run_pipeline(req: PipelineRequest):
                     {"role": "system", "content": clause_system},
                     {"role": "user", "content": text + clause_rag_block + policy_block}
                 ],
-                response_format={"type": "json_object"}, max_tokens=600, temperature=0.1
+                response_format={"type": "json_object"}, max_tokens=400, temperature=0.1
             )),
             loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -735,7 +740,7 @@ async def run_pipeline(req: PipelineRequest):
                     {"role": "system", "content": compliance_system},
                     {"role": "user", "content": text + gdpr_rag_block}
                 ],
-                response_format={"type": "json_object"}, max_tokens=500, temperature=0.1
+                response_format={"type": "json_object"}, max_tokens=350, temperature=0.1
             ))
         )
         clauses = json.loads(clauses_result.choices[0].message.content)
@@ -743,40 +748,39 @@ async def run_pipeline(req: PipelineRequest):
         log_step(3, "clause_agent", "clauses_extracted", f"{len(clauses.get('clauses',[]))} key clauses found | RAG-enhanced")
         log_step(4, "compliance_agent", "gdpr_check_complete", f"GDPR score: {gdpr.get('gdpr_score','N/A')}/10 — {len(gdpr.get('issues',[]))} issues | RAG-enhanced")
 
-        # ── STEP 5: Risk scoring ──────────────────────────────────────
+        # ── STEPS 5 + 6: Risk scoring AND Redlines in PARALLEL ───────
         log_step(5, "risk_agent", "scoring")
-        rag_risk = rag_context(f"risk assessment {intake.get('contract_type','DPA')} {req.jurisdiction}", "legal_knowledge", 2)
-        risk_rag_block = f"\n\nRelevant risk precedents:\n{rag_risk}" if rag_risk else ""
-        risk_resp = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Risk scoring agent. Return JSON: {\"risk_score\":0-10,\"risk_level\":\"HIGH|MEDIUM|LOW\",\"top_risks\":[\"...\"],\"safe_to_sign\":true/false,\"executive_summary\":\"2 sentences\"}"},
-                {"role": "user", "content": f"Clauses: {json.dumps(clauses)}\nGDPR: {json.dumps(gdpr)}\nContract snippet: {text[:1000]}{risk_rag_block}"}
-            ],
-            response_format={"type": "json_object"}, max_tokens=300, temperature=0.1
-        )
-        risk = json.loads(risk_resp.choices[0].message.content)
-        log_step(5, "risk_agent", "risk_scored", f"Risk: {risk.get('risk_score','?')}/10 — {risk.get('risk_level','?')} — Safe to sign: {risk.get('safe_to_sign','?')} | RAG-enhanced")
-
-        # ── STEP 6: Redlines
         log_step(6, "drafting_agent", "drafting_redlines")
         high_risk = [c for c in clauses.get("clauses", []) if c.get("risk") == "HIGH"]
-        if not high_risk:  # fallback: take top 3 clauses regardless of risk
+        if not high_risk:
             high_risk = clauses.get("clauses", [])[:3]
-        redlines_resp = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a contract drafting agent. For each HIGH risk clause propose a fallback redline. Return JSON: {\"redlines\":[{\"clause\":\"...\",\"original_issue\":\"...\",\"proposed_redline\":\"...\",\"rationale\":\"...\"}]}"},
-                {"role": "user", "content": f"High risk clauses: {json.dumps(high_risk[:3])}\nGDPR issues: {json.dumps(gdpr.get('issues',[])[:3])}"}
-            ],
-            response_format={"type": "json_object"}, max_tokens=600, temperature=0.2
+        risk_rag_block = f"\n\nRelevant risk precedents:\n{rag_risk}" if rag_risk else ""
+
+        risk_result, redlines_result = await asyncio.gather(
+            loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Risk scoring agent. Return JSON: {\"risk_score\":0-10,\"risk_level\":\"HIGH|MEDIUM|LOW\",\"top_risks\":[\"...\"],\"safe_to_sign\":true/false,\"executive_summary\":\"2 sentences\"}"},
+                    {"role": "user", "content": f"Clauses: {json.dumps(clauses)}\nGDPR: {json.dumps(gdpr)}\nContract snippet: {text[:800]}{risk_rag_block}"}
+                ],
+                response_format={"type": "json_object"}, max_tokens=250, temperature=0.1
+            )),
+            loop.run_in_executor(None, lambda: openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Contract drafting agent. For each HIGH risk clause propose a redline. Return JSON: {\"redlines\":[{\"clause\":\"...\",\"original_issue\":\"...\",\"proposed_redline\":\"...\",\"rationale\":\"...\"}]}"},
+                    {"role": "user", "content": f"High risk clauses: {json.dumps(high_risk[:3])}\nCompliance issues: {json.dumps(gdpr.get('issues',[])[:3])}"}
+                ],
+                response_format={"type": "json_object"}, max_tokens=400, temperature=0.2
+            ))
         )
-        redlines = json.loads(redlines_resp.choices[0].message.content)
+        risk = json.loads(risk_result.choices[0].message.content)
+        redlines = json.loads(redlines_result.choices[0].message.content)
+        log_step(5, "risk_agent", "risk_scored", f"Risk: {risk.get('risk_score','?')}/10 — {risk.get('risk_level','?')} | RAG-enhanced")
         log_step(6, "drafting_agent", "redlines_ready", f"{len(redlines.get('redlines',[]))} redlines proposed")
 
         # ── STEP 7: QA Memo ───────────────────────────────────────────
         log_step(7, "qa_agent", "generating_memo")
-        rag_memo = rag_context(f"{req.matter_name} approval memo standard recommendation", "firm_policies", 3)
         memo_rag_block = f"\n\nFirm policy standards to reference:\n{rag_memo}" if rag_memo else ""
         memo_resp = openai_client.chat.completions.create(
             model="gpt-4o-mini",
