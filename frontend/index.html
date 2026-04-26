@@ -380,19 +380,54 @@ function Dashboard({onBack}){
     }finally{clearTimeout(t);setLoading(false);}
   };
 
-  const runPipeline=async()=>{
-    if(!contractText){alert("Upload a contract first.");return;}
-    setPipelineRunning(true);setPipelineResult(null);setPipelineAnimStep(1);
-    let animInterval=setInterval(()=>setPipelineAnimStep(s=>s<9?s+1:s),3500);
+  const runPipeline=async(textOverride,labelOverride)=>{
+    const text=textOverride||contractText;
+    const label=labelOverride||"contract";
+    if(!text||text.trim().length<50){if(!textOverride)alert("Upload a contract first.");return;}
+    setIntakeStep(2);
+    setPipelineRunning(true);setPipelineResult(null);setPipelineAnimStep(1);setResult(null);
+    setChatMsgs(p=>[...p,{role:"ai",text:`🚀 Starting 10-step pipeline for "${label}"...`,ts:new Date().toLocaleTimeString()}]);
+    let step=1;
+    const stepLabels=["Receiving contract","Intake classification","Clause extraction","GDPR compliance check","Risk scoring","Drafting redlines","QA memo","Slack approval","Awaiting sign-off","Audit trail"];
+    let animInterval=setInterval(()=>{
+      step=Math.min(step+1,9);
+      setPipelineAnimStep(step);
+      setChatMsgs(p=>{
+        const last=p[p.length-1];
+        if(last&&last.pipeline)return [...p.slice(0,-1),{...last,text:`⚙️ Step ${step}: ${stepLabels[step-1]}...`}];
+        return [...p,{role:"ai",text:`⚙️ Step ${step}: ${stepLabels[step-1]}...`,ts:new Date().toLocaleTimeString(),pipeline:true}];
+      });
+    },3500);
     try{
       const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),180000);
       const r=await fetch(`${API}/api/pipeline/run`,{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contract_text:contractText,jurisdiction:"Germany",assignee:"Dr. Peter",matter_name:contractText.substring(0,40)+"..."}),signal:ctrl.signal});
+        body:JSON.stringify({contract_text:text,jurisdiction:"Germany",assignee:"Dr. Peter",matter_name:label}),signal:ctrl.signal});
       clearTimeout(t);
       if(!r.ok)throw new Error(`Pipeline error ${r.status}`);
       const d=await r.json();
-      setPipelineResult(d);setPipelineAnimStep(10);
-    }catch(err){setPipelineResult({error:err.message});}
+      setPipelineResult(d);
+      setPipelineAnimStep(10);
+      // Map pipeline clauses → ContractViewer annotation format
+      const pClauses=(d.clauses?.clauses||[]).map(c=>({
+        clause_type:c.name||"Clause",
+        original_text:c.text||c.name||"",
+        risk_level:(c.risk||"LOW").toLowerCase(),
+        explanation:c.issue||"",
+      }));
+      if(pClauses.length>0){
+        setResult({agent_results:{contract_review:{clauses_found:pClauses,overall_risk_score:d.risk?.risk_score,contract_type:d.intake?.contract_type,top_recommendations:d.risk?.top_risks||[]}}});
+      }
+      setChatMsgs(p=>p.filter(m=>!m.pipeline));
+      const rec=d.memo?.recommendation||"?";
+      const risk=d.risk?.risk_level||"?";
+      const nc=(d.clauses?.clauses||[]).length;
+      const nr=(d.redlines?.redlines||[]).length;
+      setChatMsgs(p=>[...p,{role:"ai",text:`✅ Pipeline complete — Matter ${d.matter_id} | ${risk} RISK | ${nc} clauses | ${nr} redlines | Recommendation: ${rec} | Slack sent to Dr. Peter`,ts:new Date().toLocaleTimeString()}]);
+    }catch(err){
+      setPipelineResult({error:err.message});
+      setChatMsgs(p=>p.filter(m=>!m.pipeline));
+      setChatMsgs(p=>[...p,{role:"ai",text:"Pipeline error: "+err.message,ts:new Date().toLocaleTimeString()}]);
+    }
     finally{clearInterval(animInterval);setPipelineRunning(false);}
   };
 
@@ -454,7 +489,7 @@ the State of Delaware, USA, without regard to its conflict of laws provisions.
 
 9. DISPUTE RESOLUTION
 Any disputes arising under this Agreement shall be resolved exclusively in the
-state and federal courts located in Wilmington, Delaware.`;setContractText(sampleText);await autoReview(sampleText,"Sample_NDA.txt");};
+state and federal courts located in Wilmington, Delaware.`;setContractText(sampleText);await runPipeline(sampleText,"Sample_NDA.txt");};  // eslint-disable-line
 
   const handleFile=async(e)=>{
     const f=e.target.files[0];if(!f)return;
@@ -473,7 +508,7 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
           const method=d.method==="ocr"?" via OCR":"";
           setChatMsgs(p=>[...p,{role:"ai",text:`📄 ${d.pages} pages extracted${method}. Running review...`,ts:new Date().toLocaleTimeString()}]);
           setContractText(d.text);
-          await autoReview(d.text,f.name);
+          await runPipeline(d.text,f.name);
         }
       }catch(err){
         setChatMsgs(p=>[...p.filter(m=>!m.loading),{role:"ai",text:"Upload error: "+err.message,ts:new Date().toLocaleTimeString()}]);
@@ -483,13 +518,13 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
       r.onload=async ev=>{
         const text=ev.target.result;
         setContractText(text);
-        await autoReview(text,f.name);
+        await runPipeline(text,f.name);
       };
       r.readAsText(f);
     }
   };
 
-  const loadBMW=async()=>{try{const r=await fetch('demo/bmw_dpa_contract.txt');if(r.ok){const t=await r.text();setContractText(t);await autoReview(t,"BMW_DPA_v2.txt");}else{setContractText("Failed to load BMW DPA")}}catch(e){setContractText("Failed to load: "+e.message)}};
+  const loadBMW=async()=>{try{const r=await fetch('demo/bmw_dpa_contract.txt');if(r.ok){const t=await r.text();setContractText(t);await runPipeline(t,"BMW_DPA_v2.txt");}else{setContractText("Failed to load BMW DPA")}}catch(e){setContractText("Failed to load: "+e.message)}};
 
   // Chat send — multilingual with citations
   const sendChat=async()=>{
