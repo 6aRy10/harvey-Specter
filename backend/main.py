@@ -757,6 +757,21 @@ async def run_pipeline(req: PipelineRequest):
             response_format={"type": "json_object"}, max_tokens=500, temperature=0.2
         )
         memo = json.loads(memo_resp.choices[0].message.content)
+
+        # ── LDA clause check on top HIGH-risk clause (if configured) ──
+        lda_clause_analysis = None
+        try:
+            lda = _get_lda()
+            if lda.is_configured:
+                top_clause = high_risk[0] if high_risk else (clauses.get("clauses") or [{}])[0]
+                clause_txt = top_clause.get("text") or top_clause.get("name") or ""
+                if clause_txt:
+                    lda_result = lda.clause_check(clause_txt[:800], "Aktionsmodul Arbeitsrecht")
+                    lda_clause_analysis = lda_result
+                    log_step(7, "lda_agent", "clause_checked", "Otto Schmidt clause analysis complete")
+        except Exception:
+            pass
+
         log_step(7, "qa_agent", "memo_complete", f"Recommendation: {memo.get('recommendation','?')}")
 
         # ── STEP 8: Send technical memo to LEGAL TEAM for review
@@ -802,6 +817,7 @@ async def run_pipeline(req: PipelineRequest):
             "memo": memo,
             "legal_slack_sent": legal_sent,
             "audit_trail": audit,
+            "lda_clause_analysis": lda_clause_analysis,
         }
         _pipeline_store[matter_id] = result
         return result
@@ -917,6 +933,121 @@ async def simplify_and_forward(matter_id: str, req: SimplifyRequest = SimplifyRe
 async def list_templates():
     """List available contract templates."""
     return orchestrator.get_templates()
+
+
+# ─── LDA Legal Data Hub (Otto Schmidt) ───────────────────────────────────────
+def _get_lda():
+    from backend.integrations.lda_client import LDAClient
+    return LDAClient()
+
+
+@app.get("/api/lda/status")
+async def lda_status():
+    """Check if LDA is configured and list available data assets."""
+    lda = _get_lda()
+    if not lda.is_configured:
+        return {"configured": False, "message": "Set LDA_CLIENT_ID and LDA_CLIENT_SECRET in .env"}
+    try:
+        assets = lda.list_data_assets()
+        return {"configured": True, "data_assets": assets}
+    except Exception as e:
+        return {"configured": True, "error": str(e), "data_assets": []}
+
+
+class LDASearchRequest(BaseModel):
+    query: str
+    data_asset: str = "Beratermodul Miet- und WEG-Recht"
+    size: int = 5
+
+
+class LDAQnARequest(BaseModel):
+    question: str
+    data_asset: str = "Beratermodul Miet- und WEG-Recht"
+    mode: str = "attribution"
+
+
+class LDAClauseCheckRequest(BaseModel):
+    clause_text: str
+    data_asset: str = "Aktionsmodul Arbeitsrecht"
+
+
+@app.post("/api/lda/search")
+async def lda_search(req: LDASearchRequest):
+    """Keyword search across LDA Otto Schmidt data assets."""
+    try:
+        lda = _get_lda()
+        if not lda.is_configured:
+            raise HTTPException(status_code=400, detail="LDA not configured — add LDA_CLIENT_ID and LDA_CLIENT_SECRET to .env")
+        result = lda.search(req.query, req.data_asset, req.size)
+        hits = result.get("hits", {}).get("hits", [])
+        return {
+            "query": req.query,
+            "data_asset": req.data_asset,
+            "total": result.get("hits", {}).get("total", {}).get("value", 0),
+            "results": [
+                {
+                    "id": h.get("_id"),
+                    "score": h.get("_score"),
+                    "source": h.get("_source", {}).get("metadata", {}).get("dokumententyp", ""),
+                    "date": h.get("_source", {}).get("metadata", {}).get("datum", ""),
+                    "reference": h.get("_source", {}).get("metadata", {}).get("aktenzeichen", ""),
+                    "url": h.get("_source", {}).get("metadata", {}).get("oso_url", ""),
+                    "leitsatz": h.get("_source", {}).get("metadata", {}).get("leitsatz", ""),
+                    "text": (h.get("_source", {}).get("text") or "")[:500],
+                    "highlight": " … ".join(h.get("highlight", {}).get("text", [])),
+                }
+                for h in hits
+            ],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/lda/semantic-search")
+async def lda_semantic_search(req: LDASearchRequest):
+    """AI semantic search across LDA Otto Schmidt data assets."""
+    try:
+        lda = _get_lda()
+        if not lda.is_configured:
+            raise HTTPException(status_code=400, detail="LDA not configured")
+        result = lda.semantic_search(req.query, req.data_asset, req.size)
+        return {"query": req.query, "data_asset": req.data_asset, "results": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/lda/qna")
+async def lda_qna(req: LDAQnARequest):
+    """Ask a legal question — gets AI answer with Otto Schmidt source attribution."""
+    try:
+        lda = _get_lda()
+        if not lda.is_configured:
+            raise HTTPException(status_code=400, detail="LDA not configured — add LDA_CLIENT_ID and LDA_CLIENT_SECRET to .env")
+        result = lda.qna(req.question, req.data_asset, req.mode)
+        return {"question": req.question, "data_asset": req.data_asset, "result": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/lda/clause-check")
+async def lda_clause_check(req: LDAClauseCheckRequest):
+    """Check a contract clause against Otto Schmidt legal database."""
+    try:
+        lda = _get_lda()
+        if not lda.is_configured:
+            raise HTTPException(status_code=400, detail="LDA not configured")
+        result = lda.clause_check(req.clause_text, req.data_asset)
+        return {"clause": req.clause_text[:200], "data_asset": req.data_asset, "result": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ─── RAG Search (direct vector store query) ───

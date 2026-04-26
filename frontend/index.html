@@ -389,6 +389,8 @@ function Dashboard({onBack}){
   const[kbCitations,setKbCitations]=useState([]);
   const[ragAnswer,setRagAnswer]=useState(null);
   const[ragSearching,setRagSearching]=useState(false);
+  const[ldaStatus,setLdaStatus]=useState(null);
+  const[ldaAsset,setLdaAsset]=useState("Beratermodul Miet- und WEG-Recht");
   const[triageCases,setTriageCases]=useState([
     {id:"tc1",title:"BMW DPA — Data Transfer Clause",contract:"BMW_DPA_v2.pdf",type:"DPA",risk:"HIGH",deadline:"2026-04-27T09:00",assignee:"Dr. Andreas",status:"escalated",reason:"Cross-border transfer clause violates Schrems II — needs CEO sign-off before BMW deadline",hoursLeft:8},
     {id:"tc2",title:"Client NDA — Non-Compete Scope",contract:"Client_NDA_Draft.docx",type:"NDA",risk:"HIGH",deadline:"2026-04-27T14:00",assignee:"Ms. Silvia",status:"pending_review",reason:"Non-compete clause exceeds 2-year BGB limit — client meeting tomorrow at 2pm",hoursLeft:13},
@@ -453,6 +455,7 @@ function Dashboard({onBack}){
   };
   useEffect(()=>{
     loadCollections();loadSettings();loadTargets();
+    fetch(`${API}/api/lda/status`).then(r=>r.json()).then(d=>setLdaStatus(d)).catch(()=>{});
     const hash=window.location.hash;
     if(hash.startsWith("#matter=")){
       const mid=hash.replace("#matter=","");
@@ -1162,24 +1165,55 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 {["GDPR requirements for data processing agreements","Non-compete enforceability under German BGB §74","Schrems II transfer mechanisms and SCCs","German employment termination notice periods §622 BGB","Data breach notification obligations Art.33 GDPR","DPA Art.28 processor obligations"].map(s=>(
                   <button key={s} onClick={()=>{setResearchQ(s);setRagAnswer(null);}} className="btn-outline px-2.5 py-1 rounded text-[11px] transition text-left">{s}</button>))}
               </div>
+              {ldaStatus?.configured&&(<div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"/>
+                <span className="text-[11px] font-medium text-indigo-700">Otto Schmidt / LDA connected</span>
+                <span className="text-[10px] text-[#888] ml-auto">QnA will use professional legal database</span>
+                <select value={ldaAsset} onChange={e=>setLdaAsset(e.target.value)} className="text-[10px] border border-indigo-200 rounded px-1.5 py-0.5 bg-white text-[#333] ml-1">
+                  <option>Beratermodul Miet- und WEG-Recht</option>
+                  <option>Aktionsmodul Familienrecht</option>
+                  <option>Aktionsmodul Arbeitsrecht</option>
+                  <option>Aktionsmodul Steuerrecht</option>
+                </select>
+              </div>)}
               <textarea value={researchQ} onChange={e=>setResearchQ(e.target.value)} rows={4}
                 className="w-full rounded-lg p-4 text-sm resize-none" placeholder="Ask any legal question — e.g. 'What are the GDPR obligations for cross-border data transfers?'"/>
               <button onClick={async()=>{
                 if(!researchQ.trim())return;
                 setRagSearching(true);setRagAnswer(null);
                 try{
-                  const [r1,r2,r3]=await Promise.all([
+                  const promises=[
                     fetch(`${API}/api/rag/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:researchQ,collection:"legal_knowledge",n_results:4})}).then(r=>r.json()),
                     fetch(`${API}/api/rag/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:researchQ,collection:"firm_policies",n_results:2})}).then(r=>r.json()),
                     fetch(`${API}/api/research`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:researchQ})}).then(r=>r.json()),
-                  ]);
-                  setRagAnswer({legal:r1.results||[],policies:r2.results||[],synthesis:r3});
+                  ];
+                  if(ldaStatus?.configured)promises.push(
+                    fetch(`${API}/api/lda/qna`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:researchQ,data_asset:ldaAsset,mode:"attribution"})}).then(r=>r.json()).catch(()=>null)
+                  );
+                  const [r1,r2,r3,r4]=await Promise.all(promises);
+                  setRagAnswer({legal:r1.results||[],policies:r2.results||[],synthesis:r3,lda:r4||null});
                 }catch(e){setRagAnswer({error:e.message});}
                 setRagSearching(false);
               }} disabled={ragSearching||!researchQ.trim()}
                 className="btn-primary w-full py-3 rounded-lg text-sm transition">
                 {ragSearching?"Searching knowledge base...":"Research with RAG"}</button>
               {ragAnswer&&!ragAnswer.error&&(<div className="space-y-3">
+                {/* Otto Schmidt / LDA Professional Answer */}
+                {ragAnswer.lda?.result&&(<div className="bg-[#1a1a1a] rounded-xl p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold text-white">Otto Schmidt / LDA</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-white/10 text-white/70 rounded-full">Professional Legal Database</span>
+                  </div>
+                  <p className="text-sm text-white/90 leading-relaxed">{ragAnswer.lda.result?.answer||ragAnswer.lda.result?.text||JSON.stringify(ragAnswer.lda.result).substring(0,400)}</p>
+                  {(ragAnswer.lda.result?.sources||ragAnswer.lda.result?.references||[]).length>0&&(
+                    <div className="border-t border-white/10 pt-2 space-y-1">
+                      <p className="text-[10px] text-white/50 uppercase font-semibold">Sources</p>
+                      {(ragAnswer.lda.result.sources||ragAnswer.lda.result.references||[]).slice(0,3).map((s,i)=>(
+                        <p key={i} className="text-[10px] text-white/60">{s?.title||s?.reference||JSON.stringify(s).substring(0,80)}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>)}
                 {ragAnswer.synthesis?.answer&&(<div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
                   <p className="text-[10px] font-semibold text-indigo-600 uppercase mb-1.5">⚖️ Synthesized Answer</p>
                   <p className="text-sm text-[#333] leading-relaxed">{ragAnswer.synthesis.answer}</p>
@@ -1231,9 +1265,25 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               </div>)}
             </div>)}
             {tab==="kb"&&(<div className="space-y-4">
-              <div className="card p-5">
-                <h2 className="font-harvey text-xl text-[#1a1a1a] mb-0.5">Knowledge Base</h2>
-                <p className="text-xs text-[#999]">Upload your internal playbooks, firm policies, and legal standards. These are automatically cited when contracts are reviewed.</p>
+              <div className="card p-5 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-harvey text-xl text-[#1a1a1a] mb-0.5">Knowledge Base</h2>
+                  <p className="text-xs text-[#999]">Upload your internal playbooks, firm policies, and legal standards. Automatically cited during contract review.</p>
+                </div>
+                <div className="flex-shrink-0 text-right">
+                  {ldaStatus?.configured
+                    ?(<div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"/>
+                        <span className="text-xs font-medium text-green-700">Otto Schmidt / LDA</span>
+                        <span className="text-[10px] text-[#999]">connected</span>
+                      </div>)
+                    :(<div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-400"/>
+                        <span className="text-xs text-[#888]">LDA not configured</span>
+                      </div>)
+                  }
+                  {ldaStatus?.configured&&ldaStatus?.data_assets&&(<p className="text-[10px] text-[#bbb] mt-0.5">{Array.isArray(ldaStatus.data_assets)?ldaStatus.data_assets.length:"?"} data assets available</p>)}
+                </div>
               </div>
 
               {/* Create Knowledge Base Card */}
