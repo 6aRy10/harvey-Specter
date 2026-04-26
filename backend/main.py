@@ -127,10 +127,10 @@ async def review_contract(req: ReviewRequest):
         matter_id = f"REV-{uuid.uuid4().hex[:6].upper()}"
         audit = []
 
-        # Truncate to keep processing fast (gpt-4o-mini works best under 15K chars)
-        MAX_CHARS = 15000
+        # Truncate aggressively for fast response (< 10 seconds target)
+        MAX_CHARS = 5000
         if len(req.contract_text) > MAX_CHARS:
-            req.contract_text = req.contract_text[:MAX_CHARS] + "\n\n[... contract truncated for analysis — first 15,000 characters reviewed ...]"
+            req.contract_text = req.contract_text[:MAX_CHARS] + "\n\n[... contract truncated — first 5,000 characters reviewed ...]"
 
         # Build context string from intake answers
         intake_context = ""
@@ -158,10 +158,10 @@ async def review_contract(req: ReviewRequest):
         review = await orchestrator.review_contract_only(req.contract_text, req.jurisdiction, review_context if review_context else None)
         audit.append({"agent": "contract_review", "action": "review_complete", "details": f"Risk: {review.get('overall_risk_score', 'N/A')}"})
 
-        # Step 2: Auto-research the top flagged clauses (PARALLEL for speed)
+        # Step 2: Auto-research — skipped for speed (results in <10s)
         flagged = review.get("clauses_found", [])
         research_results = []
-        if flagged:
+        if False and flagged:  # disabled for fast mode
             top_issues = flagged[:3]
             focus = f" The client's goal is: {req.context.get('goal', 'full review')}." if req.context and req.context.get("goal") else ""
 
