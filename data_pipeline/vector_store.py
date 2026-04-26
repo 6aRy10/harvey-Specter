@@ -221,11 +221,14 @@ def search_vector_store(
     # Format results
     formatted = []
     for i in range(len(results["ids"][0])):
+        dist = results["distances"][0][i]
         formatted.append({
             "id": results["ids"][0][i],
             "text": results["documents"][0][i],
+            "source": results["metadatas"][0][i].get("source", ""),
             "metadata": results["metadatas"][0][i],
-            "distance": results["distances"][0][i],
+            "distance": dist,
+            "similarity": round(max(0, 1 - dist / 2), 3),  # cosine distance → similarity
         })
 
     return formatted

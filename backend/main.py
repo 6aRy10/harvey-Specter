@@ -194,6 +194,26 @@ async def review_contract(req: ReviewRequest):
         if intake_context:
             review_context["intake_brief"] = intake_context
 
+        # Inject firm playbook/KB context into review prompt (Harvey-style)
+        try:
+            from data_pipeline.vector_store import search_vector_store
+            contract_type_hint = req.context.get("type", "") if req.context else ""
+            kb_hits = search_vector_store(
+                f"{contract_type_hint} {req.contract_text[:300]}",
+                "firm_policies", 3
+            )
+            if kb_hits:
+                playbook_ctx = "\n".join(
+                    f"- [{h.get('metadata',{}).get('source','Firm KB')}]: {h.get('text','')[:300]}"
+                    for h in kb_hits
+                )
+                review_context["firm_playbook"] = (
+                    "The following are your firm's standard policies/playbook clauses. "
+                    "Flag any deviations from these standards:\n" + playbook_ctx
+                )
+        except Exception:
+            pass
+
         # Step 1: Contract Review
         audit.append({"agent": "contract_review", "action": "review_started", "timestamp": datetime.now().isoformat()})
         if intake_context:
@@ -665,10 +685,28 @@ async def _extract_text(file: UploadFile, content: bytes, ext: str) -> str:
             import io
             reader = PdfReader(io.BytesIO(content))
             text = "\n".join(page.extract_text() or "" for page in reader.pages)
-        except ImportError:
-            raise HTTPException(status_code=400, detail="PDF support requires pypdf. Run: pip install pypdf")
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to read PDF: {e}")
+        except Exception:
+            text = ""
+        # Fallback: OCR via pymupdf + OpenAI Vision for scanned PDFs
+        if len(text.strip()) < 200:
+            try:
+                import fitz, base64
+                doc = fitz.open(stream=content, filetype="pdf")
+                ocr_texts = []
+                for i in range(min(doc.page_count, 6)):
+                    pix = doc[i].get_pixmap(dpi=100)
+                    b64 = base64.b64encode(pix.tobytes("png")).decode()
+                    resp = openai_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}", "detail": "low"}},
+                            {"type": "text", "text": "Extract all text from this document page. Return only the text."}
+                        ]}], max_tokens=1500,
+                    )
+                    ocr_texts.append(resp.choices[0].message.content.strip())
+                text = "\n\n".join(ocr_texts)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"PDF OCR failed: {e}")
     else:
         try:
             text = content.decode("utf-8", errors="ignore")

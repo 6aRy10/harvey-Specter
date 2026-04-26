@@ -993,27 +993,46 @@ state and federal courts located in Wilmington, Delaware.`);};
                 </div>
               </div>
 
-              {/* Active Vaults */}
+              {/* Active Vaults — Harvey-style grid */}
               {kbCollections.length>0&&(<div className="card p-6">
-                <h3 className="font-harvey text-lg text-[#1a1a1a] mb-3">Active Vaults</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {kbCollections.map((c,i)=>(<div key={i} className="rounded-lg border border-[#e8e5e0] p-4 hover:shadow-sm transition">
-                    <div className="w-full h-14 rounded-md mb-2.5 flex items-center justify-center" style={{background:'linear-gradient(135deg,#8b7355,#5c4a32)'}}>
-                      <svg className="w-5 h-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375"/></svg>
-                    </div>
-                    <p className="text-sm text-[#333] font-medium">{c.name}</p>
-                    <p className="text-[11px] text-[#999]">{c.count} chunks indexed</p>
-                  </div>))}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-harvey text-lg text-[#1a1a1a]">Active Vaults</h3>
+                  <span className="text-[11px] text-[#999]">Used automatically during contract review</span>
                 </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {kbCollections.map((c,i)=>{
+                    const isPlaybook=c.name.toLowerCase().includes("polic")||c.name.toLowerCase().includes("playbook")||c.name.toLowerCase().includes("standard")||c.name.toLowerCase().includes("firm");
+                    const colors=["#8b7355","#4a6741","#374d8b","#8b4545","#5c4a32"];
+                    const bg=colors[i%colors.length];
+                    return(<div key={i} className="flex items-center gap-3 rounded-lg border border-[#e8e5e0] px-4 py-3 hover:bg-[#fafaf9] transition">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:`linear-gradient(135deg,${bg},${bg}99)`}}>
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375"/></svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-[#1a1a1a] font-medium truncate">{c.name}</p>
+                        <p className="text-[11px] text-[#999]">{c.count.toLocaleString()} chunks indexed</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {isPlaybook&&<span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-medium border border-indigo-100">⚖️ Playbook</span>}
+                        <span className="text-[10px] px-2 py-0.5 bg-green-50 text-green-700 rounded-full">● Active</span>
+                      </div>
+                    </div>);
+                  })}
+                </div>
+                <p className="text-[11px] text-[#bbb] mt-3">Vaults tagged as Playbook are automatically injected into every contract review as firm standards.</p>
               </div>)}
 
               {/* Status messages */}
-              {kbUploading&&(<div className="card p-6 text-center"><div className="inline-block w-5 h-5 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin"/><p className="text-xs text-[#999] mt-2">Indexing documents into vector store...</p></div>)}
-              {kbResults&&!kbResults.error&&(<div className="bg-green-50 border border-green-200 rounded-lg p-4 slide-in">
-                <p className="text-sm text-green-700 font-medium">Indexed {kbResults.total_chunks||kbResults.chunks_created||0} chunks from {kbResults.total_files||1} file(s) into '{kbResults.collection}'</p>
-                {(kbResults.files||[]).map((f,i)=>(<p key={i} className="text-[11px] text-[#888] mt-0.5">{f.name}: {f.chunks||0} chunks {f.error?`(${f.error})`:''}</p>))}
+              {kbUploading&&(<div className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+                <div className="inline-block w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin flex-shrink-0"/>
+                <p className="text-xs text-indigo-700">Indexing into vector store — this may take a moment for PDFs...</p>
               </div>)}
-              {kbResults?.error&&(<div className="bg-red-50 border border-red-200 rounded-lg p-4"><p className="text-xs text-red-600">{kbResults.error}</p></div>)}
+              {kbResults&&!kbResults.error&&(<div className="bg-green-50 border border-green-200 rounded-lg p-4 slide-in">
+                <p className="text-sm text-green-700 font-medium">✓ Indexed {kbResults.total_chunks||kbResults.chunks_created||0} chunks from {kbResults.total_files||1} file(s) into '{kbResults.collection}'</p>
+                {(kbResults.files||[]).map((f,i)=>(<p key={i} className="text-[11px] text-[#888] mt-0.5">{f.name}: <b>{f.chunks||0} chunks</b>{f.error?` (${f.error})`:''}</p>))}
+                <p className="text-[11px] text-green-600 mt-1.5">This vault is now active and will be searched automatically on every contract review.</p>
+              </div>)}
+              {kbResults?.error&&(<div className="bg-red-50 border border-red-200 rounded-lg p-4"><p className="text-xs text-red-600 font-medium">Upload failed</p><p className="text-xs text-red-500 mt-0.5">{kbResults.error}</p></div>)}
             </div>)}
           </div>
 

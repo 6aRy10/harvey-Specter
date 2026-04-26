@@ -74,6 +74,8 @@ class ContractReviewAgent:
                 user_message += f"- Specific concerns: {', '.join(context['key_issues'])}\n"
             if context.get("intake_brief"):
                 user_message += f"\n## Client's Intake Brief (tailor your review to this):\n{context['intake_brief']}\n\nFocus your review on the client's stated objective, deadline, best-case and worst-case scenarios. Prioritize findings that directly affect what they care about.\n"
+            if context.get("firm_playbook"):
+                user_message += f"\n## Firm Playbook / Standards (CRITICAL — flag any deviations):\n{context['firm_playbook']}\n"
 
         response = self.client.chat.completions.create(
             model=self.model,
