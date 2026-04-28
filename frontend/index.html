@@ -56,6 +56,9 @@ body{font-family:'Inter',sans-serif;background:#000;color:#fff;overflow-x:hidden
 .hero-cinematic{background:linear-gradient(-45deg,#0a0a0f,#1a0a1e,#0f1a2e,#0a0f1a,#1a0f0a,#0a0a0f);background-size:600% 600%;animation:hero-bg 20s ease infinite}
 .smoke-layer{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(100,80,60,.15) 0%,transparent 70%);animation:smoke 8s ease infinite}
 .smoke-layer-2{position:absolute;inset:0;background:radial-gradient(ellipse at 70% 60%,rgba(60,50,80,.12) 0%,transparent 60%);animation:smoke 12s ease infinite reverse}
+@keyframes scrollUp{0%{transform:translateY(0)}100%{transform:translateY(-50%)}}
+.use-case-scroll{animation:scrollUp 14s linear infinite}
+.use-case-scroll:hover{animation-play-state:paused}
 </style>
 </head>
 <body>
@@ -151,6 +154,25 @@ function LandingPage({onEnter}){
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
           </div>
         </div>
+      </div>
+
+      {/* ── Scrolling Use Cases ── */}
+      <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16 px-8 md:px-16 py-16" style={{background:'#050505',borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+        <div className="shrink-0 text-sm text-gray-500 md:max-w-[160px] text-center md:text-left">
+          <span>The top legal teams<br/>use Harveyy for</span>
+        </div>
+        <div className="relative overflow-hidden flex-1" style={{height:'260px'}}>
+          <div className="absolute inset-x-0 top-0 z-10 pointer-events-none" style={{height:'110px',background:'linear-gradient(to bottom,#050505 30%,transparent 100%)'}} />
+          <div className="absolute inset-x-0 bottom-0 z-10 pointer-events-none" style={{height:'110px',background:'linear-gradient(to top,#050505 30%,transparent 100%)'}} />
+          <div className="use-case-scroll">
+            {['Contract Review','Legal Research','Compliance Checks','Risk Scoring','Executive Approval','Clause Extraction','Due Diligence','Redlining','GDPR Analysis','NDA Review','Manufacturing Law','Litigation Support',
+              'Contract Review','Legal Research','Compliance Checks','Risk Scoring','Executive Approval','Clause Extraction','Due Diligence','Redlining','GDPR Analysis','NDA Review','Manufacturing Law','Litigation Support'
+            ].map((item,i)=>(
+              <div key={i} className="font-serif text-3xl md:text-5xl py-1.5 text-white" style={{fontStyle:'italic',lineHeight:1.15,opacity:0.85}}>{item}</div>
+            ))}
+          </div>
+        </div>
+        <button onClick={onEnter} className="shrink-0 px-5 py-2.5 border border-white/20 rounded text-xs text-gray-400 hover:text-white hover:border-white/50 transition">Explore Platform →</button>
       </div>
 
       {/* ── Value Props Strip ── */}
