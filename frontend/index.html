@@ -71,70 +71,92 @@ function LandingPage({onEnter}){
   const[muted,setMuted]=useState(true);
   useEffect(()=>{const v=vidRef.current;if(!v)return;v.muted=true;v.volume=0;v.play().catch(()=>{});const resume=()=>{v.muted=true;v.play().catch(()=>{})};document.addEventListener('click',resume,{once:true});document.addEventListener('touchstart',resume,{once:true});return()=>{document.removeEventListener('click',resume);document.removeEventListener('touchstart',resume);};},[]);
   const toggleAudio=()=>{const a=audioRef.current;if(!a)return;if(muted){a.volume=0.3;a.play().catch(()=>{});setMuted(false);}else{a.pause();setMuted(true);}};
+  const scrollTo=(id)=>document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
+  const navItems=[
+    {label:'Contract Review',id:'contract-review'},
+    {label:'Legal Research',id:'legal-research'},
+    {label:'Compliance',id:'compliance'},
+    {label:'Agents',id:'agents'},
+    {label:'Security',id:'security'},
+  ];
   return(
-    <div className="relative min-h-screen bg-black overflow-hidden">
-      {/* ── Background: video if available, cinematic CSS fallback ── */}
-      {/* Layer 0: CSS animated fallback */}
-      <div className="hero-cinematic absolute inset-0" style={{zIndex:0}}/>
-      <div className="smoke-layer" style={{zIndex:1}}/>
-      <div className="smoke-layer-2" style={{zIndex:1}}/>
-      {/* Layer 2: Video on top of CSS bg */}
-      <video ref={vidRef} autoPlay muted loop playsInline preload="auto"
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{zIndex:2,filter:'brightness(0.45)',opacity:1}}>
-        <source src="hero.mp4" type="video/mp4"/>
-      </video>
-      {/* Layer 3: Gradient overlays for text readability */}
-      <div className="absolute inset-0" style={{zIndex:3,background:'linear-gradient(90deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.55) 45%,rgba(0,0,0,.15) 75%,transparent 100%)'}}/>
-      <div className="absolute inset-0" style={{zIndex:3,background:'linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 40%,transparent 80%,rgba(0,0,0,.4) 100%)'}}/>
-      {/* Background audio */}
-      <audio ref={audioRef} loop style={{display:'none'}}><source src="bg-audio.mp3" type="audio/mpeg"/></audio>
-
-      {/* ── Top Bar ── */}
-      <nav className="relative z-20 flex items-center justify-between px-8 md:px-16 py-6">
-        <span className="text-2xl" style={{fontFamily:"'DM Serif Display', serif"}}>Harveyy</span>
+    <div className="bg-black text-white">
+      {/* ── Fixed Glass Nav ── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 md:px-16 py-5"
+        style={{background:'rgba(0,0,0,0.55)',backdropFilter:'blur(16px)',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+        <span className="text-2xl cursor-pointer" style={{fontFamily:"'DM Serif Display', serif"}} onClick={()=>window.scrollTo({top:0,behavior:'smooth'})}>Harveyy</span>
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-300">
-          <span className="hover:text-white cursor-pointer transition">Platform</span>
-          <span className="hover:text-white cursor-pointer transition">Solutions</span>
-          <span className="hover:text-white cursor-pointer transition">Agents</span>
-          <span className="hover:text-white cursor-pointer transition">Security</span>
-          <span className="hover:text-white cursor-pointer transition">About</span>
+          {navItems.map(n=>(
+            <span key={n.id} onClick={()=>scrollTo(n.id)}
+              className="hover:text-white cursor-pointer transition relative group">
+              {n.label}
+              <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-white/60 transition-all duration-300 group-hover:w-full"/>
+            </span>
+          ))}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button onClick={toggleAudio} title={muted?"Play ambient audio":"Mute audio"}
-            className="text-gray-400 hover:text-white transition text-lg">{muted?"🔇":"🔊"}</button>
-          <button onClick={onEnter} className="text-sm text-gray-300 hover:text-white transition">Login</button>
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-white transition"
+            style={{background:'rgba(255,255,255,0.07)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,0.12)'}}>
+            {muted
+              ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>}
+          </button>
+          <button onClick={onEnter}
+            className="px-4 py-1.5 rounded text-xs font-medium text-gray-300 hover:text-white transition"
+            style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.15)'}}>
+            Launch Platform
+          </button>
         </div>
       </nav>
 
-      {/* ── Announcement Bar ── */}
-      <div className="relative z-20 text-center py-2">
-        <span className="text-xs text-gray-400">Harveyy Agents execute legal work end-to-end.&nbsp;
-          <span onClick={onEnter} className="underline cursor-pointer hover:text-white transition">Learn more</span>
-        </span>
-      </div>
-
-      {/* ── Hero Content ── */}
-      <div className="relative z-20 flex flex-col justify-center px-8 md:px-16 mt-16 md:mt-24 lg:mt-32 max-w-3xl">
-        <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-medium leading-[1.05] tracking-tight fade-up" style={{fontStyle:'italic'}}>
-          This is Harveyy.<br/>Your best closer.
-        </h1>
-        <p className="mt-6 text-base md:text-lg text-gray-300 max-w-lg leading-relaxed fade-up-d1">
-          For German excellency: Preserve institutional knowledge. Automate the routine. Escalate the critical.
-        </p>
-        <div className="mt-10 fade-up-d2">
-          <button onClick={onEnter}
-            className="px-7 py-3.5 border border-white/80 rounded text-sm font-medium hover:bg-white hover:text-black transition-all duration-300">
-            Request a Demo
-          </button>
+      {/* ── Hero Section ── */}
+      <div className="relative overflow-hidden" style={{height:'100vh'}}>
+        <div className="hero-cinematic absolute inset-0" style={{zIndex:0}}/>
+        <div className="smoke-layer" style={{zIndex:1}}/>
+        <div className="smoke-layer-2" style={{zIndex:1}}/>
+        <video ref={vidRef} autoPlay muted loop playsInline preload="auto"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{zIndex:2,filter:'brightness(0.45)',opacity:1}}>
+          <source src="hero.mp4" type="video/mp4"/>
+        </video>
+        <div className="absolute inset-0" style={{zIndex:3,background:'linear-gradient(90deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.55) 45%,rgba(0,0,0,.15) 75%,transparent 100%)'}}/>
+        <div className="absolute inset-0" style={{zIndex:3,background:'linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 40%,transparent 80%,rgba(0,0,0,.4) 100%)'}}/>
+        <audio ref={audioRef} loop style={{display:'none'}}><source src="bg-audio.mp3" type="audio/mpeg"/></audio>
+        <div className="relative z-20 flex flex-col justify-center px-8 md:px-16 h-full max-w-3xl pt-20">
+          <div className="mb-4">
+            <span className="text-xs uppercase tracking-[.2em] text-gray-400">Harveyy Agents execute legal work end-to-end</span>
+          </div>
+          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-medium leading-[1.05] tracking-tight fade-up" style={{fontStyle:'italic'}}>
+            This is Harveyy.<br/>Your best closer.
+          </h1>
+          <p className="mt-6 text-base md:text-lg text-gray-300 max-w-lg leading-relaxed fade-up-d1">
+            For German excellency: Preserve institutional knowledge. Automate the routine. Escalate the critical.
+          </p>
+          <div className="mt-10 flex items-center gap-4 fade-up-d2">
+            <button onClick={onEnter}
+              className="px-7 py-3.5 border border-white/80 rounded text-sm font-medium hover:bg-white hover:text-black transition-all duration-300">
+              Request a Demo
+            </button>
+            <button onClick={()=>scrollTo('contract-review')}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition">
+              <span>See how it works</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            </button>
+          </div>
+        </div>
+        {/* Scroll cue */}
+        <div className="absolute bottom-20 left-0 right-0 z-20 flex justify-center">
+          <div className="animate-bounce opacity-40 cursor-pointer" onClick={()=>scrollTo('contract-review')}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+          </div>
         </div>
       </div>
 
-      {/* ── Value Propositions ── */}
-      <div className="relative z-20 mt-32 md:mt-44 px-8 md:px-16 pb-32">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl">
-          {/* Today's Problems */}
-          <div className="fade-up-d2">
+      {/* ── Value Props Strip ── */}
+      <div className="px-8 md:px-16 py-20" style={{background:'#0a0a0a',borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 max-w-6xl">
+          <div>
             <h2 className="text-xs uppercase tracking-[.25em] text-gray-500 mb-6">Today</h2>
             <div className="space-y-4">
               {["Legal teams are overwhelmed by repetitive requests","Work is trapped in inboxes and individual knowledge","Contract review is slow and inconsistent","Business teams wait too long","High-risk issues can be missed"].map((t,i)=>(
@@ -145,15 +167,14 @@ function LandingPage({onEnter}){
               ))}
             </div>
           </div>
-          {/* With Harveyy */}
-          <div className="fade-up-d3">
+          <div>
             <h2 className="text-xs uppercase tracking-[.25em] text-gray-500 mb-6">With Harveyy</h2>
             <div className="space-y-5">
               {[{title:"Speed",desc:"Routine first-pass legal work gets done in minutes, not hours or days."},
                 {title:"Consistency",desc:"Every contract and inquiry is checked against the same playbook, risk matrix, and precedent logic."},
                 {title:"Risk reduction",desc:"The platform catches missing clauses, nonstandard terms, jurisdiction issues, and compliance red flags before they become expensive problems."},
-                {title:"Firm standards enforcement",desc:"Identifies risk against firm standards by automatically flagging deviations from your playbook and gold-standard requirements."},
-                {title:"Better lawyer leverage",desc:"Lawyers stop wasting time on repetitive triage and first-draft review, and spend more time on negotiation, strategy, and hard judgment calls."}
+                {title:"Firm standards enforcement",desc:"Automatically flags deviations from your playbook and gold-standard requirements."},
+                {title:"Better lawyer leverage",desc:"Lawyers stop wasting time on triage and spend more time on negotiation, strategy, and hard judgment calls."}
               ].map((item,i)=>(
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-white mt-2 shrink-0"/>
@@ -165,23 +186,169 @@ function LandingPage({onEnter}){
         </div>
       </div>
 
+      {/* ── CONTRACT REVIEW ── */}
+      <div id="contract-review" className="px-8 md:px-16 py-24" style={{background:'#080808'}}>
+        <div className="max-w-6xl mx-auto">
+          <p className="text-xs uppercase tracking-[.25em] text-gray-500 mb-3">Contract Review</p>
+          <h2 className="text-3xl md:text-5xl font-serif mb-4" style={{fontStyle:'italic'}}>From upload to redline in 60 seconds.</h2>
+          <p className="text-gray-400 max-w-xl mb-12 text-sm leading-relaxed">Harveyy reads every clause, flags risk by severity, and proposes specific redlines — before a lawyer even opens the document.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+            {[
+              {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>,title:"Clause Detection",desc:"Every clause extracted and labelled — liability, IP, termination, force majeure, warranties and more."},
+              {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>,title:"Risk Scoring",desc:"Each clause scored HIGH / MEDIUM / LOW with an overall 0–10 risk index and executive summary."},
+              {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,title:"Proposed Redlines",desc:"For every HIGH risk clause, Harveyy drafts a replacement with legal rationale."},
+            ].map((c,i)=>(
+              <div key={i} className="rounded-2xl p-6" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
+                <div className="text-gray-400 mb-3">{c.icon}</div>
+                <p className="text-white font-medium text-sm mb-1.5">{c.title}</p>
+                <p className="text-gray-500 text-xs leading-relaxed">{c.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {['NDA','DPA / GDPR','Manufacturing','Litigation','SaaS','Employment','M&A','Consulting'].map(t=>(
+              <span key={t} className="px-3 py-1 rounded-full text-xs text-gray-400" style={{border:'1px solid rgba(255,255,255,0.1)'}}>{t}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── LEGAL RESEARCH ── */}
+      <div id="legal-research" className="px-8 md:px-16 py-24" style={{background:'#060606',borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+        <div className="max-w-6xl mx-auto">
+          <p className="text-xs uppercase tracking-[.25em] text-gray-500 mb-3">Legal Research</p>
+          <h2 className="text-3xl md:text-5xl font-serif mb-4" style={{fontStyle:'italic'}}>Instant answers. Zero hallucination.</h2>
+          <p className="text-gray-400 max-w-xl mb-12 text-sm leading-relaxed">Ask anything in English, Deutsch, or हिन्दी. Harveyy retrieves answers grounded in your firm's knowledge base and EU/German law — with citations.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[
+              {title:"RAG-Powered Knowledge Base",desc:"Answers are retrieved from a live vector database seeded with GDPR, BGB, LkSG, NDA standards, product liability directives, and your firm's own policies."},
+              {title:"Multi-Language Support",desc:"Ask questions in English, German, or Hindi. The agent understands jurisdiction-specific nuance and responds in the language you ask in."},
+              {title:"Cited & Verifiable",desc:"Every answer references the clause or article it draws from. No black-box outputs — lawyers can trace every conclusion back to its source."},
+              {title:"Always Learning",desc:"Upload new precedents, policies, and playbooks at any time. The knowledge base updates instantly and reflects in all future answers."},
+            ].map((c,i)=>(
+              <div key={i} className="rounded-2xl p-6 flex gap-4" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                <div className="w-1 rounded-full shrink-0 mt-1" style={{background:'rgba(255,255,255,0.15)',minHeight:'40px'}}/>
+                <div>
+                  <p className="text-white font-medium text-sm mb-1.5">{c.title}</p>
+                  <p className="text-gray-500 text-xs leading-relaxed">{c.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── COMPLIANCE ── */}
+      <div id="compliance" className="px-8 md:px-16 py-24" style={{background:'#080808',borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+        <div className="max-w-6xl mx-auto">
+          <p className="text-xs uppercase tracking-[.25em] text-gray-500 mb-3">Compliance</p>
+          <h2 className="text-3xl md:text-5xl font-serif mb-4" style={{fontStyle:'italic'}}>Built for German & EU law.</h2>
+          <p className="text-gray-400 max-w-xl mb-12 text-sm leading-relaxed">Every contract is automatically checked against the regulatory frameworks that matter — before a single human review hour is spent.</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              {law:"GDPR Art. 28",desc:"Subprocessor obligations, breach notification windows, and DPA clause completeness."},
+              {law:"Schrems II",desc:"Cross-border data transfer safeguards — SCCs, adequacy decisions, and supplementary measures."},
+              {law:"LkSG",desc:"German Supply Chain Due Diligence Act — human rights and environmental risk in supplier contracts."},
+              {law:"EU Product Liability",desc:"CE marking requirements, defect warranty, and recall procedure checks for manufacturing agreements."},
+              {law:"BGB §§ 305–310",desc:"Standard Terms Control — unfair clause detection under German civil code for B2B and B2C contracts."},
+              {law:"Litigation Standards",desc:"Damages caps, jurisdiction clauses, limitation periods, and settlement enforceability."},
+            ].map((c,i)=>(
+              <div key={i} className="rounded-xl p-5" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)'}}>
+                <p className="text-white text-xs font-semibold mb-2 tracking-wide">{c.law}</p>
+                <p className="text-gray-500 text-xs leading-relaxed">{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── AGENTS ── */}
+      <div id="agents" className="px-8 md:px-16 py-24" style={{background:'#060606',borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+        <div className="max-w-6xl mx-auto">
+          <p className="text-xs uppercase tracking-[.25em] text-gray-500 mb-3">Agents</p>
+          <h2 className="text-3xl md:text-5xl font-serif mb-4" style={{fontStyle:'italic'}}>Five agents. One seamless pipeline.</h2>
+          <p className="text-gray-400 max-w-xl mb-12 text-sm leading-relaxed">Harveyy doesn't use a single AI. It runs a coordinated team of specialised agents — each responsible for a discrete legal task.</p>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-10">
+            {[
+              {num:"01",name:"Intake",desc:"Classifies contract type, extracts parties, jurisdiction, and key metadata."},
+              {num:"02",name:"Contract Review",desc:"Extracts and risk-scores every clause. Flags deviations from firm standards."},
+              {num:"03",name:"Legal Research",desc:"RAG lookup over legal knowledge base for relevant precedents and regulations."},
+              {num:"04",name:"Drafting",desc:"Proposes specific redline edits for every HIGH risk clause with rationale."},
+              {num:"05",name:"Orchestrator",desc:"Coordinates all agents, manages the pipeline, routes decisions to the right people."},
+            ].map((a,i)=>(
+              <div key={i} className="rounded-xl p-5 flex flex-col gap-2" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
+                <span className="text-xs text-gray-600 font-mono">{a.num}</span>
+                <p className="text-white text-sm font-medium">{a.name}</p>
+                <p className="text-gray-500 text-xs leading-relaxed">{a.desc}</p>
+              </div>
+            ))}
+          </div>
+          {/* Slack Integration Callout */}
+          <div className="rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center gap-6"
+            style={{background:'rgba(78,42,132,0.18)',border:'1px solid rgba(78,42,132,0.4)'}}>
+            <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center" style={{background:'#4a154b'}}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-medium mb-1">Slack-native approvals</p>
+              <p className="text-gray-400 text-sm leading-relaxed">When the pipeline completes, the legal team gets a full technical memo in Slack instantly. Once reviewed, a plain-English executive summary is forwarded to the CEO — also via Slack. Decisions are made and recorded without leaving the tools your team already uses.</p>
+            </div>
+            <div className="shrink-0 flex flex-col gap-2 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-400 inline-block"/>Legal team notified</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-400 inline-block"/>CEO approval gated</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block"/>Decision recorded</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── SECURITY ── */}
+      <div id="security" className="px-8 md:px-16 py-24" style={{background:'#080808',borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+        <div className="max-w-6xl mx-auto">
+          <p className="text-xs uppercase tracking-[.25em] text-gray-500 mb-3">Security</p>
+          <h2 className="text-3xl md:text-5xl font-serif mb-4" style={{fontStyle:'italic'}}>Confidentiality at every layer.</h2>
+          <p className="text-gray-400 max-w-xl mb-12 text-sm leading-relaxed">Legal work demands the highest standard of data protection. Harveyy is built with confidentiality as a non-negotiable requirement, not an afterthought.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+            {[
+              {title:"No data retention",desc:"Contract text is processed in memory and never written to permanent storage. Nothing persists after the session."},
+              {title:"Encrypted in transit",desc:"All communication between your browser, Netlify, and the backend uses TLS encryption end-to-end."},
+              {title:"Isolated processing",desc:"Each pipeline run is independent. Contract data from one client is never accessible to another."},
+              {title:"Role-based access",desc:"Legal team and executive views are separated. Only the right people see the right information at each stage."},
+            ].map((c,i)=>(
+              <div key={i} className="rounded-2xl p-6 flex gap-4" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                <svg className="shrink-0 mt-0.5 text-gray-600" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <div>
+                  <p className="text-white font-medium text-sm mb-1.5">{c.title}</p>
+                  <p className="text-gray-500 text-xs leading-relaxed">{c.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col items-center text-center py-12 gap-4">
+            <h3 className="text-2xl md:text-4xl font-serif" style={{fontStyle:'italic'}}>Ready to close deals faster?</h3>
+            <p className="text-gray-500 text-sm max-w-md">Try the full pipeline on your own contract — NDA, DPA, manufacturing, litigation. Takes 60 seconds.</p>
+            <button onClick={onEnter}
+              className="mt-2 px-8 py-3.5 border border-white/70 rounded text-sm font-medium hover:bg-white hover:text-black transition-all duration-300">
+              Launch Harveyy
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* ── Bottom Logo Strip ── */}
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-black/70 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-8 md:gap-12 text-xs md:text-sm text-gray-500 font-medium overflow-x-auto">
-            <span>Dentons</span>
-            <span>Hengeler Mueller</span>
-            <span>Baker McKenzie</span>
-            <span className="hidden md:inline">Freshfields</span>
-            <span className="hidden md:inline">Linklaters</span>
-            <span className="hidden md:inline">CMS</span>
-            <span className="hidden lg:inline">Allen & Overy</span>
+            <span>Dentons</span><span>Hengeler Mueller</span><span>Baker McKenzie</span>
+            <span className="hidden md:inline">Freshfields</span><span className="hidden md:inline">Linklaters</span>
+            <span className="hidden md:inline">CMS</span><span className="hidden lg:inline">Allen & Overy</span>
           </div>
           <button onClick={onEnter} className="shrink-0 px-4 py-1.5 border border-white/20 rounded text-xs text-gray-400 hover:text-white hover:border-white/50 transition">
             Our Customers
           </button>
         </div>
       </div>
+      <div style={{height:'60px'}}/>
     </div>
   );
 }
