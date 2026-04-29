@@ -538,6 +538,8 @@ function Dashboard({onBack}){
   const[kbCollections,setKbCollections]=useState([]);
   const[kbUploading,setKbUploading]=useState(false);
   const[kbResults,setKbResults]=useState(null);
+  const[matterHistory,setMatterHistory]=useState([]);
+  const[historyLoading,setHistoryLoading]=useState(false);
   const[folderPath,setFolderPath]=useState("");
   const[kbCollection,setKbCollection]=useState("firm_policies");
   const[intakeQs,setIntakeQs]=useState(null);   // array of {id, question, answer, type}
@@ -890,17 +892,22 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
     }catch(e){setChatMsgs(p=>[...p.filter(m=>!m.loading),{role:"ai",text:"Error: "+e.message,ts:new Date().toLocaleTimeString()}]);}
   };
 
-  // Drag and drop
+  // Drag and drop — routes PDFs/DOCX through extract-pdf API
   const handleDrop=(e)=>{e.preventDefault();setDragOver(false);
     const files=Array.from(e.dataTransfer.files);
     if(files.length>0){
       const f=files[0];
-      const reader=new FileReader();reader.onload=ev=>{
-        setContractText(ev.target.result);
-        const newItem={id:"t"+Date.now(),name:f.name,status:"needs_review",priority:"high",assignee:"Ayush",uploaded:"Just now",type:f.name.toLowerCase().includes("nda")?"NDA":f.name.toLowerCase().includes("dpa")?"DPA":"Contract"};
-        setTriageList(p=>[newItem,...p]);
-        setChatMsgs(p=>[...p,{role:"ai",text:`Uploaded "${f.name}" (${(f.size/1024).toFixed(1)}KB). I'll ask a few questions before reviewing.`,ts:new Date().toLocaleTimeString()}]);
-      };reader.readAsText(f);
+      const name=f.name.toLowerCase();
+      if(name.endsWith('.pdf')||name.endsWith('.docx')){
+        // Reuse handleFile logic for binary formats
+        handleFile({target:{files:[f]}});
+      } else {
+        const reader=new FileReader();reader.onload=async ev=>{
+          const text=ev.target.result;
+          setContractText(text);
+          await runPipeline(text,f.name);
+        };reader.readAsText(f);
+      }
     }
   };
 
@@ -1046,7 +1053,8 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
     {id:"research",label:"Legal Research",ic:"M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"},
     {id:"matter",label:"Full Matter",ic:"M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"},
     {id:"rag",label:"Q&A",ic:"M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"},
-    {id:"kb",label:"Knowledge Base",ic:"M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"}];
+    {id:"kb",label:"Knowledge Base",ic:"M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"},
+    {id:"history",label:"History",ic:"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"}];
 
   const doApproval=async(decision)=>{
     if(!approveData?.matter_id||approveLoading)return;
@@ -1959,6 +1967,54 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
               </div>)}
               {kbResults?.error&&(<div className="bg-red-50 border border-red-200 rounded-lg p-4"><p className="text-xs text-red-600 font-medium">Upload failed</p><p className="text-xs text-red-500 mt-0.5">{kbResults.error}</p></div>)}
             </div>)}
+
+            {tab==="history"&&(<div className="space-y-4">
+              <div className="card p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="card-header text-lg">Matter History</h2>
+                    <p className="text-xs text-[#999] mt-0.5">All contracts processed through the pipeline</p>
+                  </div>
+                  <button onClick={async()=>{setHistoryLoading(true);try{const r=await fetch(`${API}/api/matters`);const d=await r.json();setMatterHistory(d.matters||[]);}catch(e){}setHistoryLoading(false);}}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[#e0ddd8] text-[#555] hover:bg-[#f5f3f0] transition">
+                    {historyLoading?<span className="inline-block w-3 h-3 border-2 border-[#555] border-t-transparent rounded-full animate-spin"/>:<svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>}
+                    Refresh
+                  </button>
+                </div>
+                {matterHistory.length===0&&!historyLoading&&(
+                  <div className="text-center py-12">
+                    <svg className="w-10 h-10 text-[#ccc] mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <p className="text-sm text-[#999]">No matters yet. Run the pipeline on a contract to see history here.</p>
+                    <button onClick={()=>setTab('review')} className="mt-3 text-xs text-indigo-600 hover:text-indigo-800 transition">Go to Contract Review →</button>
+                  </div>
+                )}
+                {matterHistory.length>0&&(
+                  <div className="space-y-2">
+                    {matterHistory.map((m,i)=>{
+                      const riskColor=m.risk_level==="HIGH"?"text-red-600 bg-red-50 border-red-200":m.risk_level==="MEDIUM"?"text-amber-600 bg-amber-50 border-amber-200":"text-green-600 bg-green-50 border-green-200";
+                      const decisionColor=m.decision==="APPROVED"?"text-green-700 bg-green-50":m.decision==="REJECTED"?"text-red-700 bg-red-50":m.decision==="NEGOTIATE"?"text-amber-700 bg-amber-50":"text-[#999] bg-[#f5f5f5]";
+                      return(<div key={i} className="flex items-center gap-3 rounded-xl border border-[#e8e5e0] px-4 py-3 hover:bg-[#fafaf9] transition">
+                        <div className="w-9 h-9 rounded-lg bg-[#f0ede8] flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 text-[#888]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#1a1a1a] truncate">{m.matter_name||m.contract_type||"Unknown"}</p>
+                          <p className="text-xs text-[#999]">{m.matter_id} · {m.jurisdiction} · {m.created_at?new Date(m.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):""}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {m.risk_level&&<span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${riskColor}`}>{m.risk_level} {m.risk_score!=null?`${m.risk_score}/10`:""}</span>}
+                          {m.decision?<span className={`text-xs px-2 py-0.5 rounded-full font-medium ${decisionColor}`}>{m.decision}</span>:<span className="text-xs text-[#bbb]">Pending</span>}
+                          <a href={`${API}/api/pipeline/${m.matter_id}/export-redlines`} target="_blank" rel="noreferrer"
+                            className="p-1.5 rounded text-[#bbb] hover:text-[#555] hover:bg-[#f0ede8] transition" title="Export Redlines">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                          </a>
+                        </div>
+                      </div>);
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>)}
           </div>
 
           {/* ─── RIGHT: RESULTS (3 cols) ─── */}
@@ -1970,7 +2026,16 @@ state and federal courts located in Wilmington, Delaware.`;setContractText(sampl
                 <div className="flex items-center gap-2 mb-4">
                   <div className={`w-2 h-2 rounded-full ${pipelineRunning?"bg-indigo-500 animate-pulse":"bg-green-500"}`}/>
                   <h3 className="card-header text-base">10-Step DPA Pipeline</h3>
-                  {pipelineResult?.matter_id&&<span className="text-xs font-mono text-[#999] ml-auto">{pipelineResult.matter_id}</span>}
+                  {pipelineResult?.matter_id&&(
+                    <div className="ml-auto flex items-center gap-2">
+                      <span className="text-xs font-mono text-[#999]">{pipelineResult.matter_id}</span>
+                      <a href={`${API}/api/pipeline/${pipelineResult.matter_id}/export-redlines`} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border border-[#e0ddd8] text-[#555] hover:bg-[#f5f3f0] transition">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Export Redlines
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <PipelineProgress running={pipelineRunning} pipelineResult={pipelineResult} animStep={pipelineAnimStep}/>
 

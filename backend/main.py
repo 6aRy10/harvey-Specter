@@ -7,8 +7,10 @@ Run with: uvicorn backend.main:app --reload --port 8000
 """
 
 import asyncio
+import io
 import json
 import os
+import sqlite3
 import sys
 import uuid
 from datetime import datetime
@@ -16,6 +18,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from pydantic import BaseModel
@@ -23,6 +26,71 @@ from pydantic import BaseModel
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 load_dotenv()
+
+# ─── SQLite Matter History ───
+_DB_PATH = Path(__file__).parent.parent / "data" / "matters.db"
+
+def _init_db():
+    _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(_DB_PATH))
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS matters (
+            matter_id TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL,
+            matter_name TEXT,
+            contract_type TEXT,
+            risk_level TEXT,
+            risk_score REAL,
+            jurisdiction TEXT,
+            assignee TEXT,
+            status TEXT,
+            decision TEXT,
+            result_json TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+_init_db()
+
+def _save_matter_db(matter_id: str, result: dict, matter_name: str = ""):
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        conn.execute(
+            "INSERT OR REPLACE INTO matters (matter_id,created_at,matter_name,contract_type,risk_level,risk_score,jurisdiction,assignee,status,decision,result_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (matter_id, datetime.now().isoformat(),
+             matter_name or result.get("intake",{}).get("contract_type","Unknown"),
+             result.get("intake",{}).get("contract_type","Unknown"),
+             result.get("risk",{}).get("risk_level","UNKNOWN"),
+             result.get("risk",{}).get("risk_score",0),
+             result.get("intake",{}).get("jurisdiction","Germany"),
+             result.get("intake",{}).get("assignee",""),
+             result.get("status","complete"),
+             None,
+             json.dumps(result))
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"DB save error: {e}")
+
+def _get_matter_db(matter_id: str):
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        row = conn.execute("SELECT result_json FROM matters WHERE matter_id=?", (matter_id,)).fetchone()
+        conn.close()
+        return json.loads(row[0]) if row else None
+    except:
+        return None
+
+def _record_decision_db(matter_id: str, decision: str):
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        conn.execute("UPDATE matters SET decision=? WHERE matter_id=?", (decision, matter_id))
+        conn.commit()
+        conn.close()
+    except:
+        pass
 
 from backend.agents.orchestrator import Orchestrator
 
@@ -280,11 +348,19 @@ async def test_slack_webhook(req: SlackTestRequest):
 
 @app.post("/api/extract-pdf")
 async def extract_pdf(file: UploadFile = File(...)):
-    """Extract text from PDF — text-based via pypdf, scanned via OpenAI Vision OCR."""
+    """Extract text from PDF or DOCX."""
     try:
-        import io, base64
+        import base64
         from pypdf import PdfReader
         contents = await file.read()
+        filename = (file.filename or "").lower()
+
+        # ── DOCX ──
+        if filename.endswith(".docx"):
+            from docx import Document as DocxDocument
+            doc = DocxDocument(io.BytesIO(contents))
+            text = "\n\n".join(p.text for p in doc.paragraphs if p.text.strip())
+            return {"text": text, "pages": len(doc.paragraphs), "chars": len(text), "method": "docx"}
 
         # Step 1: Try pypdf (fast, works for text-based PDFs)
         reader = PdfReader(io.BytesIO(contents))
@@ -866,6 +942,7 @@ async def run_pipeline(req: PipelineRequest):
             "lda_clause_analysis": lda_clause_analysis,
         }
         _pipeline_store[matter_id] = result
+        _save_matter_db(matter_id, result, getattr(req, 'matter_name', ''))
         return result
 
     except Exception as e:
@@ -876,11 +953,80 @@ async def run_pipeline(req: PipelineRequest):
 # ─── Legal Team → Simplify & Forward to Executive ───
 @app.get("/api/pipeline/{matter_id}/status")
 async def pipeline_status(matter_id: str):
-    """Get stored pipeline result for a matter."""
+    """Get stored pipeline result for a matter (memory first, SQLite fallback)."""
     data = _pipeline_store.get(matter_id)
+    if not data:
+        data = _get_matter_db(matter_id)
+        if data:
+            _pipeline_store[matter_id] = data
     if not data:
         raise HTTPException(status_code=404, detail=f"Matter {matter_id} not found")
     return data
+
+
+@app.get("/api/matters")
+async def list_matters(limit: int = 50):
+    """List all past matters from SQLite history."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        rows = conn.execute(
+            "SELECT matter_id,created_at,matter_name,contract_type,risk_level,risk_score,jurisdiction,assignee,status,decision FROM matters ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        conn.close()
+        return {"matters": [
+            {"matter_id":r[0],"created_at":r[1],"matter_name":r[2],"contract_type":r[3],
+             "risk_level":r[4],"risk_score":r[5],"jurisdiction":r[6],"assignee":r[7],
+             "status":r[8],"decision":r[9]}
+            for r in rows
+        ]}
+    except Exception as e:
+        return {"matters": [], "error": str(e)}
+
+
+@app.get("/api/pipeline/{matter_id}/export-redlines")
+async def export_redlines(matter_id: str):
+    """Export redlines as a Word (.docx) document."""
+    data = _pipeline_store.get(matter_id) or _get_matter_db(matter_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Matter not found")
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        doc = Document()
+        title = doc.add_heading(f"Redline Report", 0)
+        doc.add_paragraph(f"Matter ID: {matter_id}  |  Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} UTC")
+        doc.add_paragraph(f"Contract Type: {data.get('intake',{}).get('contract_type','Unknown')}  |  Risk: {data.get('risk',{}).get('risk_level','?')} ({data.get('risk',{}).get('risk_score','?')}/10)")
+        doc.add_paragraph("")
+        redlines = data.get("redlines",{}).get("redlines",[])
+        if not redlines:
+            doc.add_paragraph("No redlines generated for this matter.")
+        else:
+            for i, r in enumerate(redlines, 1):
+                doc.add_heading(f"{i}. {r.get('clause','Clause')}", level=2)
+                p = doc.add_paragraph()
+                run = p.add_run("ORIGINAL: ")
+                run.bold = True
+                run.font.color.rgb = RGBColor(0xCC, 0x00, 0x00)
+                p.add_run(r.get('original',''))
+                p2 = doc.add_paragraph()
+                run2 = p2.add_run("PROPOSED: ")
+                run2.bold = True
+                run2.font.color.rgb = RGBColor(0x00, 0x77, 0x00)
+                p2.add_run(r.get('proposed_redline', r.get('redline','')))
+                doc.add_paragraph(f"Rationale: {r.get('rationale', r.get('reason',''))}")
+                doc.add_paragraph("")
+        buf = io.BytesIO()
+        doc.save(buf)
+        buf.seek(0)
+        return StreamingResponse(
+            buf,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f"attachment; filename=redlines_{matter_id}.docx"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class ApprovalDecisionRequest(BaseModel):
@@ -907,6 +1053,7 @@ def _exec_decision_notify(matter_id: str, decision: str, comment: str, emoji: st
 async def approve_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
     """Executive approves the matter."""
     _exec_decision_notify(matter_id, "APPROVED", req.comment or "", "✅")
+    _record_decision_db(matter_id, "APPROVED")
     return {"matter_id": matter_id, "decision": "APPROVED", "comment": req.comment}
 
 
@@ -914,6 +1061,7 @@ async def approve_matter(matter_id: str, req: ApprovalDecisionRequest = Approval
 async def reject_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
     """Executive rejects the matter."""
     _exec_decision_notify(matter_id, "REJECTED", req.comment or "", "❌")
+    _record_decision_db(matter_id, "REJECTED")
     return {"matter_id": matter_id, "decision": "REJECTED", "comment": req.comment}
 
 
@@ -921,6 +1069,7 @@ async def reject_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalD
 async def negotiate_matter(matter_id: str, req: ApprovalDecisionRequest = ApprovalDecisionRequest()):
     """Executive sends back for changes."""
     _exec_decision_notify(matter_id, "NEGOTIATE", req.comment or "", "✏️")
+    _record_decision_db(matter_id, "NEGOTIATE")
     return {"matter_id": matter_id, "decision": "NEGOTIATE", "comment": req.comment}
 
 
