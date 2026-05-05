@@ -1705,7 +1705,7 @@ async def reject_request(approval_id: str, req: ApprovalActionRequest = Approval
 async def draft_with_approval(req: DraftRequest):
     """Draft a contract AND send it for partner approval before delivery."""
     try:
-        result = await orchestrator.draft_contract(req.requirements)
+        result = await orchestrator.draft_contract_only(req.requirements, req.jurisdiction)
 
         # Send to partner for approval via Slack
         from backend.integrations.slack_approval import send_approval_request
